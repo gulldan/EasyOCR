@@ -64,7 +64,8 @@ class Trainer(object):
     def get_load_param(self, gpu):
         if self.config.train.ckpt_path is not None:
             map_location = {"cuda:%d" % 0: "cuda:%d" % gpu}
-            param = torch.load(self.config.train.ckpt_path, map_location=map_location)
+            param = torch.load(self.config.train.ckpt_path,
+                               map_location=map_location)
         else:
             param = None
         return param
@@ -88,7 +89,8 @@ class Trainer(object):
         test_config = DotDict(self.config.test[dataset])
 
         val_result_dir = os.path.join(
-            self.config.results_dir, "{}/{}".format(dataset + "_iou", str(train_step))
+            self.config.results_dir, "{}/{}".format(
+                dataset + "_iou", str(train_step))
         )
 
         evaluator = DetectionIoUEvaluator()
@@ -130,7 +132,8 @@ class Trainer(object):
             craft.load_state_dict(copyStateDict(self.net_param["craft"]))
         craft = nn.SyncBatchNorm.convert_sync_batchnorm(craft)
         craft = craft.cuda()
-        craft = torch.nn.parallel.DistributedDataParallel(craft, device_ids=[self.gpu])
+        craft = torch.nn.parallel.DistributedDataParallel(
+            craft, device_ids=[self.gpu])
 
         torch.backends.cudnn.benchmark = True
 
@@ -143,7 +146,8 @@ class Trainer(object):
         )
 
         if self.config.train.ckpt_path is not None and self.config.train.st_iter != 0:
-            optimizer.load_state_dict(copyStateDict(self.net_param["optimizer"]))
+            optimizer.load_state_dict(
+                copyStateDict(self.net_param["optimizer"]))
             self.config.train.st_iter = self.net_param["optimizer"]["state"][0]["step"]
             self.config.train.lr = self.net_param["optimizer"]["param_groups"][0]["lr"]
 
@@ -247,7 +251,8 @@ class Trainer(object):
                         "{}, training_step: {}|{}, learning rate: {:.8f}, "
                         "training_loss: {:.5f}, avg_batch_time: {:.5f}".format(
                             time.strftime(
-                                "%Y-%m-%d:%H:%M:%S", time.localtime(time.time())
+                                "%Y-%m-%d:%H:%M:%S", time.localtime(
+                                    time.time())
                             ),
                             train_step,
                             whole_training_step,
@@ -257,7 +262,8 @@ class Trainer(object):
                         )
                     )
                     if self.gpu == 0 and self.config.wandb_opt:
-                        wandb.log({"train_step": train_step, "mean_loss": mean_loss})
+                        wandb.log({"train_step": train_step,
+                                  "mean_loss": mean_loss})
 
                 if (
                     train_step % self.config.train.eval_interval == 0
@@ -316,7 +322,8 @@ class Trainer(object):
                 "optimizer": optimizer.state_dict(),
             }
             save_param_path = (
-                self.config.results_dir + "/CRAFT_clr_" + repr(train_step) + ".pth"
+                self.config.results_dir + "/CRAFT_clr_" +
+                repr(train_step) + ".pth"
             )
 
             if self.config.train.amp:
@@ -361,14 +368,16 @@ def main():
 
     # Duplicate yaml file to result_dir
     shutil.copy(
-        "config/" + args.yaml + ".yaml", os.path.join(res_dir, args.yaml) + ".yaml"
+        "config/" + args.yaml +
+        ".yaml", os.path.join(res_dir, args.yaml) + ".yaml"
     )
 
     ngpus_per_node = torch.cuda.device_count()
     print(f"Total device num : {ngpus_per_node}")
 
     manager = mp.Manager()
-    buffer1 = manager.list([None] * config["test"]["icdar2013"]["test_set_size"])
+    buffer1 = manager.list([None] * config["test"]
+                           ["icdar2013"]["test_set_size"])
     buffer_dict = {"icdar2013": buffer1}
     torch.multiprocessing.spawn(
         main_worker,
@@ -403,6 +412,7 @@ def main_worker(gpu, port, ngpus_per_node, config, buffer_dict, exp_name):
     if gpu == 0 and config["wandb_opt"]:
         wandb.finish()
     torch.distributed.destroy_process_group()
+
 
 if __name__ == "__main__":
     main()

@@ -55,14 +55,16 @@ class CraftBaseDataset(Dataset):
         self.sample = sample
         if self.sample != -1:
             random.seed(0)
-            self.idx = random.sample(range(0, len(self.img_names)), self.sample)
+            self.idx = random.sample(
+                range(0, len(self.img_names)), self.sample)
 
         self.pre_crop_area = []
 
     def augment_image(
         self, image, region_score, affinity_score, confidence_mask, word_level_char_bbox
     ):
-        augment_targets = [image, region_score, affinity_score, confidence_mask]
+        augment_targets = [image, region_score,
+                           affinity_score, confidence_mask]
 
         if self.aug.random_scale.option:
             augment_targets, word_level_char_bbox = random_scale(
@@ -100,7 +102,8 @@ class CraftBaseDataset(Dataset):
                 )
 
             elif self.aug.random_crop.version == "random_crop":
-                augment_targets = random_crop(augment_targets, self.output_size,)
+                augment_targets = random_crop(
+                    augment_targets, self.output_size,)
 
             else:
                 assert "Undefined RandomCrop version"
@@ -185,7 +188,8 @@ class CraftBaseDataset(Dataset):
                 confidence_mask,
             )
 
-        region_score = self.resize_to_half(region_score, interpolation=cv2.INTER_CUBIC)
+        region_score = self.resize_to_half(
+            region_score, interpolation=cv2.INTER_CUBIC)
         affinity_score = self.resize_to_half(
             affinity_score, interpolation=cv2.INTER_CUBIC
         )
@@ -284,7 +288,7 @@ class SynthTextDataSet(CraftBaseDataset):
 
         for i in range(len(words)):
             length_of_word = len(words[i])
-            word_bbox = all_char_bbox[char_idx : char_idx + length_of_word]
+            word_bbox = all_char_bbox[char_idx: char_idx + length_of_word]
             assert len(word_bbox) == length_of_word
             char_idx += length_of_word
             word_bbox = np.array(word_bbox)
@@ -425,7 +429,8 @@ class CustomDataset(CraftBaseDataset):
                 self.net, self.gpu, image, word_bboxes[i], words[i], img_name=img_name
             )
 
-            cv2.fillPoly(confidence_mask, [np.int32(_word_bboxes[i])], confidence)
+            cv2.fillPoly(confidence_mask, [
+                         np.int32(_word_bboxes[i])], confidence)
             do_care_words.append(words[i])
             word_level_char_bbox.append(pseudo_char_bbox)
             horizontal_text_bools.append(horizontal_text_bool)
@@ -512,8 +517,10 @@ class CustomDataset(CraftBaseDataset):
         saved_cf_mask_path = os.path.join(
             self.saved_gt_dir, f"res_img_{query_idx}_cf_mask_thresh_0.6.jpg"
         )
-        region_score = cv2.imread(saved_region_scores_path, cv2.IMREAD_GRAYSCALE)
-        affinity_score = cv2.imread(saved_affi_scores_path, cv2.IMREAD_GRAYSCALE)
+        region_score = cv2.imread(
+            saved_region_scores_path, cv2.IMREAD_GRAYSCALE)
+        affinity_score = cv2.imread(
+            saved_affi_scores_path, cv2.IMREAD_GRAYSCALE)
         confidence_mask = cv2.imread(saved_cf_mask_path, cv2.IMREAD_GRAYSCALE)
 
         region_score = cv2.resize(region_score, (img_w, img_h))

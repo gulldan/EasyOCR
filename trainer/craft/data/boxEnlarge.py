@@ -6,8 +6,10 @@ def pointAngle(Apoint, Bpoint):
     angle = (Bpoint[1] - Apoint[1]) / ((Bpoint[0] - Apoint[0]) + 10e-8)
     return angle
 
+
 def pointDistance(Apoint, Bpoint):
     return math.sqrt((Bpoint[1] - Apoint[1])**2 + (Bpoint[0] - Apoint[0])**2)
+
 
 def lineBiasAndK(Apoint, Bpoint):
 
@@ -15,8 +17,10 @@ def lineBiasAndK(Apoint, Bpoint):
     B = Apoint[1] - K*Apoint[0]
     return K, B
 
+
 def getX(K, B, Ypoint):
     return int((Ypoint-B)/K)
+
 
 def sidePoint(Apoint, Bpoint, h, w, placehold, enlarge_size):
 
@@ -42,6 +46,7 @@ def sidePoint(Apoint, Bpoint, h, w, placehold, enlarge_size):
         x1 = max(0, Apoint[0] - XaxisIncreaseDistance)
         y1 = min(h, Apoint[1] + YaxisIncreaseDistance)
     return int(x1), int(y1)
+
 
 def enlargebox(box, h, w, enlarge_size, horizontal_text_bool):
 

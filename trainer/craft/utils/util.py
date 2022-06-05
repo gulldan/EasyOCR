@@ -39,15 +39,18 @@ def saveInput(
         np.clip(boxes[:, :, 0], 0, image.shape[1])
         np.clip(boxes[:, :, 1], 0, image.shape[0])
         for box in boxes:
-            cv2.polylines(image, [np.reshape(box, (-1, 1, 2))], True, (0, 0, 255))
+            cv2.polylines(
+                image, [np.reshape(box, (-1, 1, 2))], True, (0, 0, 255))
     target_gaussian_heatmap_color = imgproc.cvt2HeatmapImg(region_scores)
-    target_gaussian_affinity_heatmap_color = imgproc.cvt2HeatmapImg(affinity_scores)
+    target_gaussian_affinity_heatmap_color = imgproc.cvt2HeatmapImg(
+        affinity_scores)
     confidence_mask_gray = imgproc.cvt2HeatmapImg(confidence_mask)
 
     # overlay
     height, width, channel = image.shape
     overlay_region = cv2.resize(target_gaussian_heatmap_color, (width, height))
-    overlay_aff = cv2.resize(target_gaussian_affinity_heatmap_color, (width, height))
+    overlay_aff = cv2.resize(
+        target_gaussian_affinity_heatmap_color, (width, height))
     confidence_mask_gray = cv2.resize(
         confidence_mask_gray, (width, height), interpolation=cv2.INTER_NEAREST
     )
@@ -103,13 +106,15 @@ def saveImage(
             )
 
     target_gaussian_heatmap_color = imgproc.cvt2HeatmapImg(region_scores)
-    target_gaussian_affinity_heatmap_color = imgproc.cvt2HeatmapImg(affinity_scores)
+    target_gaussian_affinity_heatmap_color = imgproc.cvt2HeatmapImg(
+        affinity_scores)
     confidence_mask_gray = imgproc.cvt2HeatmapImg(confidence_mask)
 
     # overlay
     height, width, channel = image.shape
     overlay_region = cv2.resize(target_gaussian_heatmap_color, (width, height))
-    overlay_aff = cv2.resize(target_gaussian_affinity_heatmap_color, (width, height))
+    overlay_aff = cv2.resize(
+        target_gaussian_affinity_heatmap_color, (width, height))
 
     overlay_region = cv2.addWeighted(image.copy(), 0.4, overlay_region, 0.6, 5)
     overlay_aff = cv2.addWeighted(image.copy(), 0.4, overlay_aff, 0.6, 5)
@@ -120,7 +125,8 @@ def saveImage(
     if type(imagename) is not str:
         imagename = imagename[0].split("/")[-1][:-4]
 
-    output = np.concatenate([output_image, heat_map, confidence_mask_gray], axis=1)
+    output = np.concatenate(
+        [output_image, heat_map, confidence_mask_gray], axis=1)
     outpath = vis_dir + f"/{imagename}.jpg"
     if not os.path.exists(os.path.dirname(outpath)):
         os.makedirs(os.path.dirname(outpath), exist_ok=True)
@@ -130,7 +136,6 @@ def saveImage(
 
 
 def save_parser(args):
-
     """ final options """
     with open(f"{args.results_dir}/opt.txt", "a", encoding="utf-8") as opt_file:
         opt_log = "------------ Options -------------\n"

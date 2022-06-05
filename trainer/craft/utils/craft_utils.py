@@ -11,16 +11,17 @@ from data import imgproc
 # unwarp corodinates
 
 
-
-
 def warpCoord(Minv, pt):
     out = np.matmul(Minv, (pt[0], pt[1], 1))
     return np.array([out[0]/out[2], out[1]/out[2]])
+
+
 """ end of auxilary functions """
+
 
 def test():
     print('pass')
-    
+
 
 def getDetBoxes_core(textmap, linkmap, text_threshold, link_threshold, low_text):
     # prepare data
@@ -34,39 +35,49 @@ def getDetBoxes_core(textmap, linkmap, text_threshold, link_threshold, low_text)
 
     text_score_comb = np.clip(text_score + link_score, 0, 1)
     nLabels, labels, stats, centroids = \
-        cv2.connectedComponentsWithStats(text_score_comb.astype(np.uint8), connectivity=4)
+        cv2.connectedComponentsWithStats(
+            text_score_comb.astype(np.uint8), connectivity=4)
 
     det = []
     mapper = []
-    for k in range(1,nLabels):
+    for k in range(1, nLabels):
         # size filtering
         size = stats[k, cv2.CC_STAT_AREA]
-        if size < 10: continue
+        if size < 10:
+            continue
 
         # thresholding
-        if np.max(textmap[labels==k]) < text_threshold: continue
+        if np.max(textmap[labels == k]) < text_threshold:
+            continue
 
         # make segmentation map
         segmap = np.zeros(textmap.shape, dtype=np.uint8)
-        segmap[labels==k] = 255
-        segmap[np.logical_and(link_score==1, text_score==0)] = 0   # remove link area
+        segmap[labels == k] = 255
+        # remove link area
+        segmap[np.logical_and(link_score == 1, text_score == 0)] = 0
         x, y = stats[k, cv2.CC_STAT_LEFT], stats[k, cv2.CC_STAT_TOP]
         w, h = stats[k, cv2.CC_STAT_WIDTH], stats[k, cv2.CC_STAT_HEIGHT]
         niter = int(math.sqrt(size * min(w, h) / (w * h)) * 2)
         sx, ex, sy, ey = x - niter, x + w + niter + 1, y - niter, y + h + niter + 1
         # boundary check
-        if sx < 0 : sx = 0
-        if sy < 0 : sy = 0
-        if ex >= img_w: ex = img_w
-        if ey >= img_h: ey = img_h
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(1 + niter, 1 + niter))
-        segmap[sy:ey, sx:ex] = cv2.dilate(segmap[sy:ey, sx:ex], kernel, iterations=1)
+        if sx < 0:
+            sx = 0
+        if sy < 0:
+            sy = 0
+        if ex >= img_w:
+            ex = img_w
+        if ey >= img_h:
+            ey = img_h
+        kernel = cv2.getStructuringElement(
+            cv2.MORPH_RECT, (1 + niter, 1 + niter))
+        segmap[sy:ey, sx:ex] = cv2.dilate(
+            segmap[sy:ey, sx:ex], kernel, iterations=1)
         #kernel1 = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 5))
         #segmap[sy:ey, sx:ex] = cv2.dilate(segmap[sy:ey, sx:ex], kernel1, iterations=1)
 
-
         # make box
-        np_contours = np.roll(np.array(np.where(segmap!=0)),1,axis=0).transpose().reshape(-1,2)
+        np_contours = np.roll(np.array(np.where(segmap != 0)),
+                              1, axis=0).transpose().reshape(-1, 2)
         rectangle = cv2.minAreaRect(np_contours)
         box = cv2.boxPoints(rectangle)
 
@@ -74,8 +85,8 @@ def getDetBoxes_core(textmap, linkmap, text_threshold, link_threshold, low_text)
         w, h = np.linalg.norm(box[0] - box[1]), np.linalg.norm(box[1] - box[2])
         box_ratio = max(w, h) / (min(w, h) + 1e-5)
         if abs(1 - box_ratio) <= 0.1:
-            l, r = min(np_contours[:,0]), max(np_contours[:,0])
-            t, b = min(np_contours[:,1]), max(np_contours[:,1])
+            l, r = min(np_contours[:, 0]), max(np_contours[:, 0])
+            t, b = min(np_contours[:, 1]), max(np_contours[:, 1])
             box = np.array([[l, t], [r, t], [r, b], [l, b]], dtype=np.float32)
 
         # make clock-wise order
@@ -88,6 +99,7 @@ def getDetBoxes_core(textmap, linkmap, text_threshold, link_threshold, low_text)
 
     return det, labels, mapper
 
+
 def getPoly_core(boxes, labels, mapper, linkmap):
     # configs
     num_cp = 5
@@ -96,21 +108,25 @@ def getPoly_core(boxes, labels, mapper, linkmap):
     max_r = 2.0
     step_r = 0.2
 
-    polys = []  
+    polys = []
     for k, box in enumerate(boxes):
         # size filter for small instance
-        w, h = int(np.linalg.norm(box[0] - box[1]) + 1), int(np.linalg.norm(box[1] - box[2]) + 1)
+        w, h = int(np.linalg.norm(box[0] - box[1]) +
+                   1), int(np.linalg.norm(box[1] - box[2]) + 1)
         if w < 30 or h < 30:
-            polys.append(None); continue
+            polys.append(None)
+            continue
 
         # warp image
-        tar = np.float32([[0,0],[w,0],[w,h],[0,h]])
+        tar = np.float32([[0, 0], [w, 0], [w, h], [0, h]])
         M = cv2.getPerspectiveTransform(box, tar)
-        word_label = cv2.warpPerspective(labels, M, (w, h), flags=cv2.INTER_NEAREST)
+        word_label = cv2.warpPerspective(
+            labels, M, (w, h), flags=cv2.INTER_NEAREST)
         try:
             Minv = np.linalg.inv(M)
         except:
-            polys.append(None); continue
+            polys.append(None)
+            continue
 
         # binarization for selected label
         cur_label = mapper[k]
@@ -122,15 +138,18 @@ def getPoly_core(boxes, labels, mapper, linkmap):
         cp = []
         max_len = -1
         for i in range(w):
-            region = np.where(word_label[:,i] != 0)[0]
-            if len(region) < 2 : continue
+            region = np.where(word_label[:, i] != 0)[0]
+            if len(region) < 2:
+                continue
             cp.append((i, region[0], region[-1]))
             length = region[-1] - region[0] + 1
-            if length > max_len: max_len = length
+            if length > max_len:
+                max_len = length
 
         # pass if max_len is similar to h
         if h * max_len_ratio < max_len:
-            polys.append(None); continue
+            polys.append(None)
+            continue
 
         # get pivot points with fixed length
         tot_seg = num_cp * 2 + 1
@@ -141,12 +160,14 @@ def getPoly_core(boxes, labels, mapper, linkmap):
         seg_num = 0
         num_sec = 0
         prev_h = -1
-        for i in range(0,len(cp)):
+        for i in range(0, len(cp)):
             (x, sy, ey) = cp[i]
             if (seg_num + 1) * seg_w <= x and seg_num <= tot_seg:
                 # average previous segment
-                if num_sec == 0: break
-                cp_section[seg_num] = [cp_section[seg_num][0] / num_sec, cp_section[seg_num][1] / num_sec]
+                if num_sec == 0:
+                    break
+                cp_section[seg_num] = [cp_section[seg_num][0] /
+                                       num_sec, cp_section[seg_num][1] / num_sec]
                 num_sec = 0
 
                 # reset variables
@@ -156,10 +177,12 @@ def getPoly_core(boxes, labels, mapper, linkmap):
             # accumulate center points
             cy = (sy + ey) * 0.5
             cur_h = ey - sy + 1
-            cp_section[seg_num] = [cp_section[seg_num][0] + x, cp_section[seg_num][1] + cy]
+            cp_section[seg_num] = [cp_section[seg_num]
+                                   [0] + x, cp_section[seg_num][1] + cy]
             num_sec += 1
 
-            if seg_num % 2 == 0: continue # No polygon area
+            if seg_num % 2 == 0:
+                continue  # No polygon area
 
             if prev_h < cur_h:
                 pp[int((seg_num - 1)/2)] = (x, cy)
@@ -168,11 +191,13 @@ def getPoly_core(boxes, labels, mapper, linkmap):
 
         # processing last segment
         if num_sec != 0:
-            cp_section[-1] = [cp_section[-1][0] / num_sec, cp_section[-1][1] / num_sec]
+            cp_section[-1] = [cp_section[-1][0] /
+                              num_sec, cp_section[-1][1] / num_sec]
 
-        # pass if num of pivots is not sufficient or segment widh is smaller than character height 
+        # pass if num of pivots is not sufficient or segment widh is smaller than character height
         if None in pp or seg_w < np.max(seg_height) * 0.25:
-            polys.append(None); continue
+            polys.append(None)
+            continue
 
         # calc median maximum of pivot points
         half_char_h = np.median(seg_height) * expand_ratio / 2
@@ -191,15 +216,18 @@ def getPoly_core(boxes, labels, mapper, linkmap):
 
         # get edge points to cover character heatmaps
         isSppFound, isEppFound = False, False
-        grad_s = (pp[1][1] - pp[0][1]) / (pp[1][0] - pp[0][0]) + (pp[2][1] - pp[1][1]) / (pp[2][0] - pp[1][0])
-        grad_e = (pp[-2][1] - pp[-1][1]) / (pp[-2][0] - pp[-1][0]) + (pp[-3][1] - pp[-2][1]) / (pp[-3][0] - pp[-2][0])
+        grad_s = (pp[1][1] - pp[0][1]) / (pp[1][0] - pp[0][0]) + \
+            (pp[2][1] - pp[1][1]) / (pp[2][0] - pp[1][0])
+        grad_e = (pp[-2][1] - pp[-1][1]) / (pp[-2][0] - pp[-1][0]) + \
+            (pp[-3][1] - pp[-2][1]) / (pp[-3][0] - pp[-2][0])
         for r in np.arange(0.5, max_r, step_r):
             dx = 2 * half_char_h * r
             if not isSppFound:
                 line_img = np.zeros(word_label.shape, dtype=np.uint8)
                 dy = grad_s * dx
                 p = np.array(new_pp[0]) - np.array([dx, dy, dx, dy])
-                cv2.line(line_img, (int(p[0]), int(p[1])), (int(p[2]), int(p[3])), 1, thickness=1)
+                cv2.line(line_img, (int(p[0]), int(p[1])),
+                         (int(p[2]), int(p[3])), 1, thickness=1)
                 if np.sum(np.logical_and(word_label, line_img)) == 0 or r + 2 * step_r >= max_r:
                     spp = p
                     isSppFound = True
@@ -207,7 +235,8 @@ def getPoly_core(boxes, labels, mapper, linkmap):
                 line_img = np.zeros(word_label.shape, dtype=np.uint8)
                 dy = grad_e * dx
                 p = np.array(new_pp[-1]) + np.array([dx, dy, dx, dy])
-                cv2.line(line_img, (int(p[0]), int(p[1])), (int(p[2]), int(p[3])), 1, thickness=1)
+                cv2.line(line_img, (int(p[0]), int(p[1])),
+                         (int(p[2]), int(p[3])), 1, thickness=1)
                 if np.sum(np.logical_and(word_label, line_img)) == 0 or r + 2 * step_r >= max_r:
                     epp = p
                     isEppFound = True
@@ -216,7 +245,8 @@ def getPoly_core(boxes, labels, mapper, linkmap):
 
         # pass if boundary of polygon is not found
         if not (isSppFound and isEppFound):
-            polys.append(None); continue
+            polys.append(None)
+            continue
 
         # make final polygon
         poly = []
@@ -234,8 +264,10 @@ def getPoly_core(boxes, labels, mapper, linkmap):
 
     return polys
 
+
 def getDetBoxes(textmap, linkmap, text_threshold, link_threshold, low_text, poly=False):
-    boxes, labels, mapper = getDetBoxes_core(textmap, linkmap, text_threshold, link_threshold, low_text)
+    boxes, labels, mapper = getDetBoxes_core(
+        textmap, linkmap, text_threshold, link_threshold, low_text)
 
     if poly:
         polys = getPoly_core(boxes, labels, mapper, linkmap)
@@ -244,7 +276,8 @@ def getDetBoxes(textmap, linkmap, text_threshold, link_threshold, low_text, poly
 
     return boxes, polys
 
-def adjustResultCoordinates(polys, ratio_w, ratio_h, ratio_net = 2):
+
+def adjustResultCoordinates(polys, ratio_w, ratio_h, ratio_net=2):
     if len(polys) > 0:
         polys = np.array(polys)
         for k in range(len(polys)):
@@ -252,8 +285,9 @@ def adjustResultCoordinates(polys, ratio_w, ratio_h, ratio_net = 2):
                 polys[k] *= (ratio_w * ratio_net, ratio_h * ratio_net)
     return polys
 
+
 def save_outputs(image, region_scores, affinity_scores, text_threshold, link_threshold,
-                                           low_text, outoput_path, confidence_mask = None):
+                 low_text, outoput_path, confidence_mask=None):
     """save image, region_scores, and affinity_scores in a single image. region_scores and affinity_scores must be
     cpu numpy arrays. You can convert GPU Tensors to CPU numpy arrays like this:
     >>> array = tensor.cpu().data.numpy()
@@ -274,26 +308,31 @@ def save_outputs(image, region_scores, affinity_scores, text_threshold, link_thr
     assert len(image.shape) - 1 == len(region_scores.shape)
 
     boxes, polys = getDetBoxes(region_scores, affinity_scores, text_threshold, link_threshold,
-                                           low_text, False)
+                               low_text, False)
     boxes = np.array(boxes, np.int32) * 2
     if len(boxes) > 0:
         np.clip(boxes[:, :, 0], 0, image.shape[1])
         np.clip(boxes[:, :, 1], 0, image.shape[0])
         for box in boxes:
-            cv2.polylines(image, [np.reshape(box, (-1, 1, 2))], True, (0, 0, 255))
+            cv2.polylines(
+                image, [np.reshape(box, (-1, 1, 2))], True, (0, 0, 255))
 
     target_gaussian_heatmap_color = imgproc.cvt2HeatmapImg(region_scores)
-    target_gaussian_affinity_heatmap_color = imgproc.cvt2HeatmapImg(affinity_scores)
+    target_gaussian_affinity_heatmap_color = imgproc.cvt2HeatmapImg(
+        affinity_scores)
 
     if confidence_mask is not None:
         confidence_mask_gray = imgproc.cvt2HeatmapImg(confidence_mask)
-        gt_scores = np.hstack([target_gaussian_heatmap_color, target_gaussian_affinity_heatmap_color])
-        confidence_mask_gray = np.hstack([np.zeros_like(confidence_mask_gray), confidence_mask_gray])
+        gt_scores = np.hstack(
+            [target_gaussian_heatmap_color, target_gaussian_affinity_heatmap_color])
+        confidence_mask_gray = np.hstack(
+            [np.zeros_like(confidence_mask_gray), confidence_mask_gray])
         output = np.concatenate([gt_scores, confidence_mask_gray], axis=0)
         output = np.hstack([image, output])
 
     else:
-        gt_scores = np.concatenate([target_gaussian_heatmap_color, target_gaussian_affinity_heatmap_color], axis=0)
+        gt_scores = np.concatenate(
+            [target_gaussian_heatmap_color, target_gaussian_affinity_heatmap_color], axis=0)
         output = np.hstack([image, gt_scores])
 
     cv2.imwrite(outoput_path, output)
@@ -301,8 +340,7 @@ def save_outputs(image, region_scores, affinity_scores, text_threshold, link_thr
 
 
 def save_outputs_from_tensors(images, region_scores, affinity_scores, text_threshold, link_threshold,
-                                           low_text, output_dir, image_names, confidence_mask = None):
-
+                              low_text, output_dir, image_names, confidence_mask=None):
     """takes images, region_scores, and affinity_scores as tensors (cab be GPU).
     :param images: 4D tensor
     :param region_scores: 3D tensor with values between 0 ~ 1
@@ -335,10 +373,10 @@ def save_outputs_from_tensors(images, region_scores, affinity_scores, text_thres
         affinity_score = affinity_scores[i]
 
         image_name = os.path.basename(image_names[i])
-        outoput_path = os.path.join(output_dir,image_name)
+        outoput_path = os.path.join(output_dir, image_name)
 
         output_image = save_outputs(image, region_score, affinity_score, text_threshold, link_threshold,
-                                           low_text, outoput_path, confidence_mask=confidence_mask)
+                                    low_text, outoput_path, confidence_mask=confidence_mask)
 
         output_images.append(output_image)
 

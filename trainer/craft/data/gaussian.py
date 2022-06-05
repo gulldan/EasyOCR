@@ -38,7 +38,8 @@ class GaussianBuilder(object):
         gaussian_map = (gaussian_map / np.max(gaussian_map)).astype(np.float32)
 
         gaussian_map_color = (gaussian_map * 255).astype(np.uint8)
-        gaussian_map_color = cv2.applyColorMap(gaussian_map_color, cv2.COLORMAP_JET)
+        gaussian_map_color = cv2.applyColorMap(
+            gaussian_map_color, cv2.COLORMAP_JET)
         return gaussian_map, gaussian_map_color
 
     def generate_circle_mask(self):
@@ -73,7 +74,8 @@ class GaussianBuilder(object):
         )
 
         M = cv2.getPerspectiveTransform(init_points, bbox)
-        warped_gaussian_map = cv2.warpPerspective(self.gaussian_map, M, (width, height))
+        warped_gaussian_map = cv2.warpPerspective(
+            self.gaussian_map, M, (width, height))
         return warped_gaussian_map, width, height
 
     def add_gaussian_map_to_score_map(
@@ -97,7 +99,8 @@ class GaussianBuilder(object):
         """
 
         map_h, map_w = score_map.shape
-        bbox = enlargebox(bbox, map_h, map_w, enlarge_size, horizontal_text_bool)
+        bbox = enlargebox(bbox, map_h, map_w, enlarge_size,
+                          horizontal_text_bool)
 
         # If any one point of character bbox is out of range, don't put in on map
         if np.any(bbox < 0) or np.any(bbox[:, 0] > map_w) or np.any(bbox[:, 1] > map_h):
@@ -113,7 +116,7 @@ class GaussianBuilder(object):
 
         try:
             bbox_area_of_image = score_map[
-                bbox_top : bbox_top + height, bbox_left : bbox_left + width,
+                bbox_top: bbox_top + height, bbox_left: bbox_left + width,
             ]
             high_value_score = np.where(
                 warped_gaussian_map > bbox_area_of_image,
@@ -121,7 +124,7 @@ class GaussianBuilder(object):
                 bbox_area_of_image,
             )
             score_map[
-                bbox_top : bbox_top + height, bbox_left : bbox_left + width,
+                bbox_top: bbox_top + height, bbox_left: bbox_left + width,
             ] = high_value_score
 
         except Exception as e:
