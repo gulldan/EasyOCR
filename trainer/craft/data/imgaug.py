@@ -11,7 +11,8 @@ from torchvision.transforms import InterpolationMode
 def rescale(img, bboxes, target_size=2240):
     h, w = img.shape[0:2]
     scale = target_size / max(h, w)
-    img = cv2.resize(img, dsize=None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+    img = cv2.resize(img, dsize=None, fx=scale, fy=scale,
+                     interpolation=cv2.INTER_CUBIC)
     bboxes = bboxes * scale
     return img, bboxes
 
@@ -25,13 +26,16 @@ def random_resize_crop_synth(augment_targets, size):
     confidence_mask = Image.fromarray(confidence_mask)
 
     short_side = min(image.size)
-    i, j, h, w = RandomCrop.get_params(image, output_size=(short_side, short_side))
+    i, j, h, w = RandomCrop.get_params(
+        image, output_size=(short_side, short_side))
 
     image = resized_crop(
-        image, i, j, h, w, size=(size, size), interpolation=InterpolationMode.BICUBIC
+        image, i, j, h, w, size=(
+            size, size), interpolation=InterpolationMode.BICUBIC
     )
     region_score = resized_crop(
-        region_score, i, j, h, w, (size, size), interpolation=InterpolationMode.BICUBIC
+        region_score, i, j, h, w, (size,
+                                   size), interpolation=InterpolationMode.BICUBIC
     )
     affinity_score = resized_crop(
         affinity_score,
@@ -76,17 +80,20 @@ def random_resize_crop(
 
     else:
         if random.random() < threshold:
-            i, j, h, w = RandomResizedCrop.get_params(image, scale=scale, ratio=ratio)
+            i, j, h, w = RandomResizedCrop.get_params(
+                image, scale=scale, ratio=ratio)
         else:
             i, j, h, w = RandomResizedCrop.get_params(
                 image, scale=(1.0, 1.0), ratio=(1.0, 1.0)
             )
 
     image = resized_crop(
-        image, i, j, h, w, size=(size, size), interpolation=InterpolationMode.BICUBIC
+        image, i, j, h, w, size=(
+            size, size), interpolation=InterpolationMode.BICUBIC
     )
     region_score = resized_crop(
-        region_score, i, j, h, w, (size, size), interpolation=InterpolationMode.BICUBIC
+        region_score, i, j, h, w, (size,
+                                   size), interpolation=InterpolationMode.BICUBIC
     )
     affinity_score = resized_crop(
         affinity_score,

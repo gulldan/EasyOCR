@@ -21,10 +21,12 @@ class PseudoCharBoxBuilder:
 
     def crop_image_by_bbox(self, image, box, word):
         w = max(
-            int(np.linalg.norm(box[0] - box[1])), int(np.linalg.norm(box[2] - box[3]))
+            int(np.linalg.norm(box[0] - box[1])
+                ), int(np.linalg.norm(box[2] - box[3]))
         )
         h = max(
-            int(np.linalg.norm(box[0] - box[3])), int(np.linalg.norm(box[1] - box[2]))
+            int(np.linalg.norm(box[0] - box[3])
+                ), int(np.linalg.norm(box[1] - box[2]))
         )
         try:
             word_ratio = h / w
@@ -105,8 +107,10 @@ class PseudoCharBoxBuilder:
         _watershed_box = np.int32(watershed_box)
         _pseudo_char_bbox = np.int32(pseudo_char_bbox)
 
-        region_score_color = cv2.applyColorMap(np.uint8(region_score), cv2.COLORMAP_JET)
-        region_score_color = cv2.resize(region_score_color, (word_img_w, word_img_h))
+        region_score_color = cv2.applyColorMap(
+            np.uint8(region_score), cv2.COLORMAP_JET)
+        region_score_color = cv2.resize(
+            region_score_color, (word_img_w, word_img_h))
 
         for box in _watershed_box:
             cv2.polylines(
@@ -118,7 +122,8 @@ class PseudoCharBoxBuilder:
 
         for box in _pseudo_char_bbox:
             cv2.polylines(
-                np.uint8(word_img_cp2), [np.reshape(box, (-1, 1, 2))], True, (255, 0, 0)
+                np.uint8(word_img_cp2), [np.reshape(
+                    box, (-1, 1, 2))], True, (255, 0, 0)
             )
 
         # NOTE: Just for visualize, put gaussian map on char box
@@ -180,7 +185,8 @@ class PseudoCharBoxBuilder:
                 continue
             left = j * width_per_char
             right = (j + 1) * width_per_char
-            bbox = np.array([[left, 0], [right, 0], [right, height], [left, height]])
+            bbox = np.array(
+                [[left, 0], [right, 0], [right, height], [left, height]])
             bboxes.append(bbox)
 
         bboxes = np.array(bboxes, np.float32)
@@ -238,7 +244,8 @@ class PseudoCharBoxBuilder:
         confidence = self.get_confidence(real_char_len, len(pseudo_char_bbox))
 
         if confidence <= 0.5:
-            pseudo_char_bbox = self.split_word_equal_gap(word_img_w, word_img_h, word)
+            pseudo_char_bbox = self.split_word_equal_gap(
+                word_img_w, word_img_h, word)
             confidence = 0.5
 
         if self.pseudo_vis_opt and self.flag:
@@ -258,6 +265,7 @@ class PseudoCharBoxBuilder:
                 pseudo_char_bbox[i][None, :, :], M_inv
             )
 
-        pseudo_char_bbox = self.clip_into_boundary(pseudo_char_bbox, image.shape)
+        pseudo_char_bbox = self.clip_into_boundary(
+            pseudo_char_bbox, image.shape)
 
         return pseudo_char_bbox, confidence, horizontal_text_bool

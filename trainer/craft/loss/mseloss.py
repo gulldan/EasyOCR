@@ -8,7 +8,8 @@ class Loss(nn.Module):
 
     def forward(self, gt_region, gt_affinity, pred_region, pred_affinity, conf_map):
         loss = torch.mean(
-            ((gt_region - pred_region).pow(2) + (gt_affinity - pred_affinity).pow(2))
+            ((gt_region - pred_region).pow(2) +
+             (gt_affinity - pred_affinity).pow(2))
             * conf_map
         )
         return loss
@@ -50,7 +51,8 @@ class Maploss_v2(nn.Module):
                         sorted=False,
                     )[0]
                 ) / (positive_pixel_number * neg_rto)
-            positive_loss = torch.sum(positive_loss_region) / positive_pixel_number
+            positive_loss = torch.sum(
+                positive_loss_region) / positive_pixel_number
         else:
             # only negative pixel
             negative_loss = (
@@ -111,7 +113,8 @@ class Maploss_v3(nn.Module):
             pos_pixel = (single_label >= 0.1).float()
             n_pos_pixel = torch.sum(pos_pixel)
             pos_loss_region = single_loss * pos_pixel
-            positive_loss += torch.sum(pos_loss_region) / max(n_pos_pixel, 1e-12)
+            positive_loss += torch.sum(pos_loss_region) / \
+                max(n_pos_pixel, 1e-12)
 
             # negative_loss
             neg_pixel = (single_label < 0.1).float()
@@ -126,14 +129,16 @@ class Maploss_v3(nn.Module):
                     # n_hard_neg = neg_rto*n_pos_pixel
                     negative_loss += (
                         torch.sum(
-                            torch.topk(neg_loss_region.view(-1), int(n_hard_neg))[0]
+                            torch.topk(neg_loss_region.view(-1),
+                                       int(n_hard_neg))[0]
                         )
                         / n_hard_neg
                     )
             else:
                 # only negative pixel
                 negative_loss += (
-                    torch.sum(torch.topk(neg_loss_region.view(-1), n_min_neg)[0])
+                    torch.sum(torch.topk(
+                        neg_loss_region.view(-1), n_min_neg)[0])
                     / n_min_neg
                 )
 
