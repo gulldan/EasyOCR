@@ -6,11 +6,13 @@ from .modules import VGG_FeatureExtractor, BidirectionalLSTM
 class Model(nn.Module):
     def __init__(self, input_channel, output_channel, hidden_size, num_class):
         super(Model, self).__init__()
-        self.FeatureExtraction = VGG_FeatureExtractor(input_channel, output_channel)
+        self.FeatureExtraction = VGG_FeatureExtractor(
+            input_channel, output_channel)
         self.FeatureExtraction_output = output_channel
 
         self.SequenceModeling = nn.Sequential(
-            BidirectionalLSTM(self.FeatureExtraction_output, hidden_size, hidden_size),
+            BidirectionalLSTM(self.FeatureExtraction_output,
+                              hidden_size, hidden_size),
             BidirectionalLSTM(hidden_size, hidden_size, hidden_size))
         self.SequenceModeling_output = hidden_size
 
