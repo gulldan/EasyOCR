@@ -10,7 +10,7 @@ class SegSpatialScaleDetector(nn.Module):
     def __init__(self,
                  in_channels=[64, 128, 256, 512],
                  inner_channels=256, k=10,
-                 bias=False, adaptive=False, smooth=False, serial=False,fpn=True, attention_type='scale_spatial',
+                 bias=False, adaptive=False, smooth=False, serial=False, fpn=True, attention_type='scale_spatial',
                  *args, **kwargs):
         '''
         bias: Whether conv layers have bias or not.
@@ -33,23 +33,29 @@ class SegSpatialScaleDetector(nn.Module):
 
         if self.fpn:
             self.out5 = nn.Sequential(
-                nn.Conv2d(inner_channels, inner_channels // 4, 3, padding=1, bias=bias),
+                nn.Conv2d(inner_channels, inner_channels //
+                          4, 3, padding=1, bias=bias),
                 nn.Upsample(scale_factor=8, mode='nearest'))
             self.out4 = nn.Sequential(
-                nn.Conv2d(inner_channels, inner_channels // 4, 3, padding=1, bias=bias),
+                nn.Conv2d(inner_channels, inner_channels //
+                          4, 3, padding=1, bias=bias),
                 nn.Upsample(scale_factor=4, mode='nearest'))
             self.out3 = nn.Sequential(
-                nn.Conv2d(inner_channels, inner_channels // 4, 3, padding=1, bias=bias),
+                nn.Conv2d(inner_channels, inner_channels //
+                          4, 3, padding=1, bias=bias),
                 nn.Upsample(scale_factor=2, mode='nearest'))
-            self.out2 = nn.Conv2d(inner_channels, inner_channels//4, 3, padding=1, bias=bias)
+            self.out2 = nn.Conv2d(
+                inner_channels, inner_channels//4, 3, padding=1, bias=bias)
             self.out5.apply(self.weights_init)
             self.out4.apply(self.weights_init)
             self.out3.apply(self.weights_init)
             self.out2.apply(self.weights_init)
 
-            self.concat_attention = ScaleFeatureSelection(inner_channels, inner_channels//4, attention_type=attention_type)
+            self.concat_attention = ScaleFeatureSelection(
+                inner_channels, inner_channels//4, attention_type=attention_type)
             self.binarize = nn.Sequential(
-                nn.Conv2d(inner_channels, inner_channels // 4, 3, bias=bias, padding=1),
+                nn.Conv2d(inner_channels, inner_channels //
+                          4, 3, bias=bias, padding=1),
                 BatchNorm2d(inner_channels//4),
                 nn.ReLU(inplace=True),
                 nn.ConvTranspose2d(inner_channels//4, inner_channels//4, 2, 2),
@@ -58,9 +64,11 @@ class SegSpatialScaleDetector(nn.Module):
                 nn.ConvTranspose2d(inner_channels//4, 1, 2, 2),
                 nn.Sigmoid())
         else:
-            self.concat_attention = ScaleFeatureSelection(inner_channels, inner_channels//4, )
+            self.concat_attention = ScaleFeatureSelection(
+                inner_channels, inner_channels//4, )
             self.binarize = nn.Sequential(
-                nn.Conv2d(inner_channels, inner_channels // 4, 3, bias=bias, padding=1),
+                nn.Conv2d(inner_channels, inner_channels //
+                          4, 3, bias=bias, padding=1),
                 BatchNorm2d(inner_channels//4),
                 nn.ReLU(inplace=True),
                 nn.ConvTranspose2d(inner_channels//4, inner_channels//4, 2, 2),
@@ -73,7 +81,7 @@ class SegSpatialScaleDetector(nn.Module):
         self.adaptive = adaptive
         if adaptive:
             self.thresh = self._init_thresh(
-                    inner_channels, serial=serial, smooth=smooth, bias=bias)
+                inner_channels, serial=serial, smooth=smooth, bias=bias)
             self.thresh.apply(self.weights_init)
 
         self.in5.apply(self.weights_init)
@@ -99,10 +107,12 @@ class SegSpatialScaleDetector(nn.Module):
                       4, 3, padding=1, bias=bias),
             BatchNorm2d(inner_channels//4),
             nn.ReLU(inplace=True),
-            self._init_upsample(inner_channels // 4, inner_channels//4, smooth=smooth, bias=bias),
+            self._init_upsample(inner_channels // 4,
+                                inner_channels//4, smooth=smooth, bias=bias),
             BatchNorm2d(inner_channels//4),
             nn.ReLU(inplace=True),
-            self._init_upsample(inner_channels // 4, 1, smooth=smooth, bias=bias),
+            self._init_upsample(inner_channels // 4, 1,
+                                smooth=smooth, bias=bias),
             nn.Sigmoid())
         return self.thresh
 
@@ -114,8 +124,8 @@ class SegSpatialScaleDetector(nn.Module):
             if out_channels == 1:
                 inter_out_channels = in_channels
             module_list = [
-                    nn.Upsample(scale_factor=2, mode='nearest'),
-                    nn.Conv2d(in_channels, inter_out_channels, 3, 1, 1, bias=bias)]
+                nn.Upsample(scale_factor=2, mode='nearest'),
+                nn.Conv2d(in_channels, inter_out_channels, 3, 1, 1, bias=bias)]
             if out_channels == 1:
                 module_list.append(
                     nn.Conv2d(in_channels, out_channels,
@@ -142,7 +152,7 @@ class SegSpatialScaleDetector(nn.Module):
 
         fuse = torch.cat((p5, p4, p3, p2), 1)
         fuse = self.concat_attention(fuse, [p5, p4, p3, p2])
-        # this is the pred module, not binarization module; 
+        # this is the pred module, not binarization module;
         # We do not correct the name due to the trained model.
         binary = self.binarize(fuse)
         if self.training:
@@ -152,8 +162,8 @@ class SegSpatialScaleDetector(nn.Module):
         if self.adaptive and self.training:
             if self.serial:
                 fuse = torch.cat(
-                        (fuse, nn.functional.interpolate(
-                            binary, fuse.shape[2:])), 1)
+                    (fuse, nn.functional.interpolate(
+                        binary, fuse.shape[2:])), 1)
             thresh = self.thresh(fuse)
             thresh_binary = self.step_function(binary, thresh)
             result.update(thresh=thresh, thresh_binary=thresh_binary)

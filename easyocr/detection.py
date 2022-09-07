@@ -10,6 +10,7 @@ from .craft_utils import getDetBoxes, adjustResultCoordinates
 from .imgproc import resize_aspect_ratio, normalizeMeanVariance
 from .craft import CRAFT
 
+
 def copyStateDict(state_dict):
     if list(state_dict.keys())[0].startswith("module"):
         start_idx = 1
@@ -20,6 +21,7 @@ def copyStateDict(state_dict):
         name = ".".join(k.split(".")[start_idx:])
         new_state_dict[name] = v
     return new_state_dict
+
 
 def test_net(canvas_size, mag_ratio, net, image, text_threshold, link_threshold, low_text, poly, device, estimate_num_chars=False):
     if isinstance(image, np.ndarray) and len(image.shape) == 4:  # image is batch of np arrays
@@ -71,23 +73,28 @@ def test_net(canvas_size, mag_ratio, net, image, text_threshold, link_threshold,
 
     return boxes_list, polys_list
 
+
 def get_detector(trained_model, device='cpu', quantize=True, cudnn_benchmark=False):
     net = CRAFT()
 
     if device == 'cpu':
-        net.load_state_dict(copyStateDict(torch.load(trained_model, map_location=device)))
+        net.load_state_dict(copyStateDict(
+            torch.load(trained_model, map_location=device)))
         if quantize:
             try:
-                torch.quantization.quantize_dynamic(net, dtype=torch.qint8, inplace=True)
+                torch.quantization.quantize_dynamic(
+                    net, dtype=torch.qint8, inplace=True)
             except:
                 pass
     else:
-        net.load_state_dict(copyStateDict(torch.load(trained_model, map_location=device)))
+        net.load_state_dict(copyStateDict(
+            torch.load(trained_model, map_location=device)))
         net = torch.nn.DataParallel(net).to(device)
         cudnn.benchmark = cudnn_benchmark
 
     net.eval()
     return net
+
 
 def get_textbox(detector, image, canvas_size, mag_ratio, text_threshold, link_threshold, low_text, poly, device, optimal_num_chars=None, **kwargs):
     result = []

@@ -1,10 +1,11 @@
 from . import model as structure_model
 from .constructor import Configurable, State
 
+
 class Model(Configurable):
     builder = State()
     #representer = State()
-    
+
     def __init__(self, **kwargs):
         self.load_all(**kwargs)
 
@@ -32,6 +33,7 @@ class Builder(Configurable):
                       distributed=distributed, local_rank=local_rank)
         return model
 
+
 class Detector(Configurable):
     structure = State(autoload=False)
 
@@ -50,4 +52,3 @@ class Detector(Configurable):
             self.load('validation', **kwargs)
         else:
             self.validation = None
-

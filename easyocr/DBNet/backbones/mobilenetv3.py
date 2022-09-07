@@ -84,7 +84,7 @@ class MobileBottleneck(nn.Module):
         conv_layer = nn.Conv2d
         norm_layer = nn.BatchNorm2d
         if nl == 'RE':
-            nlin_layer = nn.ReLU # or ReLU6
+            nlin_layer = nn.ReLU  # or ReLU6
         elif nl == 'HS':
             nlin_layer = Hswish
         else:
@@ -100,7 +100,8 @@ class MobileBottleneck(nn.Module):
             norm_layer(exp),
             nlin_layer(inplace=True),
             # dw
-            conv_layer(exp, exp, kernel, stride, padding, groups=exp, bias=False),
+            conv_layer(exp, exp, kernel, stride,
+                       padding, groups=exp, bias=False),
             norm_layer(exp),
             SELayer(exp),
             nlin_layer(inplace=True),
@@ -162,27 +163,33 @@ class MobileNetV3(nn.Module):
 
         # building first layer
         assert input_size % 32 == 0
-        last_channel = make_divisible(last_channel * width_mult) if width_mult > 1.0 else last_channel
-        self.features = nn.ModuleList([conv_bn(3, input_channel, 2, nlin_layer=Hswish)])   # start_idx = 0: Input type (torch.cuda.FloatTensor) and weight type (torch.FloatTensor) should be the same
+        last_channel = make_divisible(
+            last_channel * width_mult) if width_mult > 1.0 else last_channel
+        # start_idx = 0: Input type (torch.cuda.FloatTensor) and weight type (torch.FloatTensor) should be the same
+        self.features = nn.ModuleList(
+            [conv_bn(3, input_channel, 2, nlin_layer=Hswish)])
         self.classifier = []
 
         # building mobile blocks
         for k, exp, c, se, nl, s in mobile_setting:
             output_channel = make_divisible(c * width_mult)
             exp_channel = make_divisible(exp * width_mult)
-            self.features.append(MobileBottleneck(input_channel, output_channel, k, s, exp_channel, se, nl))
+            self.features.append(MobileBottleneck(
+                input_channel, output_channel, k, s, exp_channel, se, nl))
             input_channel = output_channel
 
         # building last several layers
         if mode == 'large':
             last_conv = make_divisible(960 * width_mult)
-            self.features.append(conv_1x1_bn(input_channel, last_conv, nlin_layer=Hswish))  # 16
+            self.features.append(conv_1x1_bn(
+                input_channel, last_conv, nlin_layer=Hswish))  # 16
             self.features.append(nn.AdaptiveAvgPool2d(1))
             self.features.append(nn.Conv2d(last_conv, last_channel, 1, 1, 0))
             self.features.append(Hswish(inplace=True))
         elif mode == 'small':
             last_conv = make_divisible(576 * width_mult)
-            self.features.append(conv_1x1_bn(input_channel, last_conv, nlin_layer=Hswish))
+            self.features.append(conv_1x1_bn(
+                input_channel, last_conv, nlin_layer=Hswish))
             # self.features.append(SEModule(last_conv))  # refer to paper Table2, but I think this is a mistake
             self.features.append(nn.AdaptiveAvgPool2d(1))
             self.features.append(nn.Conv2d(last_conv, last_channel, 1, 1, 0))
@@ -191,7 +198,7 @@ class MobileNetV3(nn.Module):
             raise NotImplementedError
 
         # make it nn.Sequential
-        #self.features = nn.Sequential(*self.features)  del for dbnet
+        # self.features = nn.Sequential(*self.features)  del for dbnet
 
         # building classifier
         self.classifier = nn.Sequential(
@@ -207,7 +214,8 @@ class MobileNetV3(nn.Module):
         x = self.classifier(x)
         return x'''
         x2, x3, x4, x5 = None, None, None, None
-        for stage in range(17): # https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.1/ppocr/modeling/backbones/det_mobilenet_v3.py
+        # https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.1/ppocr/modeling/backbones/det_mobilenet_v3.py
+        for stage in range(17):
             x = self.features[stage](x)
             if stage == 3:  # if s == 2 and start_idx > 3
                 x2 = x
@@ -242,6 +250,7 @@ def mobilenet_v3_large(pretrained=False, **kwargs):
         model.load_state_dict(state_dict, strict=True)
         # raise NotImplementedError
     return model
+
 
 def mobilenet_v3_small(pretrained=False, **kwargs):
     model = MobileNetV3(mode='small', **kwargs)

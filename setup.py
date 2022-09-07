@@ -12,26 +12,32 @@ from setuptools.command.egg_info import egg_info
 with open('requirements.txt', encoding="utf-8-sig") as f:
     requirements = f.readlines()
 
+
 def readme():
     with open('README.md', encoding="utf-8-sig") as f:
         README = f.read()
     return README
 
+
 def compile_dbnet_dcn(script_dir):
-    script_path = os.path.join(script_dir, 'easyocr', 'scripts', 'compile_dbnet_dcn.py')
+    script_path = os.path.join(
+        script_dir, 'easyocr', 'scripts', 'compile_dbnet_dcn.py')
     subprocess.run(
         "python {}".format(script_path), shell=True
     )
+
 
 class CustomCommand_install(install):
     def run(self):
         install.run(self)
         compile_dbnet_dcn(self.install_lib)
 
+
 class CustomCommand_develop(develop):
     def run(self):
         develop.run(self)
         compile_dbnet_dcn(self.install_dir)
+
 
 setup(
     name='easyocr',
