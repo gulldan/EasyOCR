@@ -17,15 +17,17 @@ import torch
 
 from .model.constructor import Configurable
 # %%
+
+
 class DBNet:
-    def __init__(self, 
-                 backbone = "resnet18",
-                 weight_dir = None,
-                 weight_name = 'pretrained',
-                 initialize_model = True,
-                 dynamic_import_relative_path = None,
-                 device = 'cuda', 
-                 verbose = 0):
+    def __init__(self,
+                 backbone="resnet18",
+                 weight_dir=None,
+                 weight_name='pretrained',
+                 initialize_model=True,
+                 dynamic_import_relative_path=None,
+                 device='cuda',
+                 verbose=0):
         '''
         DBNet text detector class
 
@@ -65,38 +67,43 @@ class DBNet:
         None.
         '''
         self.device = device
-        
-        config_path = os.path.join(os.path.dirname(__file__), "configs", "DBNet_inference.yaml")
+
+        config_path = os.path.join(os.path.dirname(
+            __file__), "configs", "DBNet_inference.yaml")
         with open(config_path, 'r') as fid:
             self.configs = yaml.safe_load(fid)
 
         if dynamic_import_relative_path is not None:
-            self.configs = self.set_relative_import_path(self.configs, dynamic_import_relative_path)
+            self.configs = self.set_relative_import_path(
+                self.configs, dynamic_import_relative_path)
 
         if backbone in self.configs.keys():
             self.backbone = backbone
         else:
-            raise ValueError("Invalid backbone. Current support backbone are {}.".format(",".join(self.configs.keys())))
+            raise ValueError("Invalid backbone. Current support backbone are {}.".format(
+                ",".join(self.configs.keys())))
 
         if weight_dir is not None:
             self.weight_dir = weight_dir
-        else:    
-            self.weight_dir = os.path.join(os.path.dirname(__file__), 'weights')
-
+        else:
+            self.weight_dir = os.path.join(
+                os.path.dirname(__file__), 'weights')
 
         if initialize_model:
             if weight_name in self.configs[backbone]['weight'].keys():
-                weight_path = os.path.join(self.weight_dir, self.configs[backbone]['weight'][weight_name])
+                weight_path = os.path.join(
+                    self.weight_dir, self.configs[backbone]['weight'][weight_name])
                 error_message = "A weight with a name {} is found in DBNet_inference.yaml but cannot be find file: {}."
             else:
                 weight_path = os.path.join(self.weight_dir, weight_name)
                 error_message = "A weight with a name {} is not found in DBNet_inference.yaml and cannot be find file: {}."
-                
+
             if not os.path.isfile(weight_path):
-                raise FileNotFoundError(error_message.format(weight_name, weight_path))
-                
+                raise FileNotFoundError(
+                    error_message.format(weight_name, weight_path))
+
             self.initialize_model(self.configs[backbone]['model'], weight_path)
-        
+
         else:
             self.model = None
 
@@ -118,7 +125,7 @@ class DBNet:
             integrating this module into other modules. For example, easyocr/DBNet
             This should be left as None when calling this module as a standalone. 
             The default is None.
-        
+
         Returns
         -------
         configs : dict
@@ -126,12 +133,13 @@ class DBNet:
         '''
         assert dynamic_import_relative_path is not None
         prefices = dynamic_import_relative_path.split(os.sep)
-        for key,value in configs.items():
+        for key, value in configs.items():
             if key == 'class':
                 configs.update({key: ".".join(prefices + value.split("."))})
             else:
                 if isinstance(value, dict):
-                    value = self.set_relative_import_path(value, dynamic_import_relative_path)
+                    value = self.set_relative_import_path(
+                        value, dynamic_import_relative_path)
                 else:
                     pass
         return configs
@@ -156,7 +164,8 @@ class DBNet:
         '''
         if self.model is None:
             raise RuntimeError("model has not yet been constructed.")
-        self.model.load_state_dict(torch.load(weight_path, map_location=self.device), strict=False)
+        self.model.load_state_dict(torch.load(
+            weight_path, map_location=self.device), strict=False)
         self.model.eval()
 
     def construct_model(self, config):
@@ -172,7 +181,8 @@ class DBNet:
         -------
         None.
         '''
-        self.model = Configurable.construct_class_from_config(config).structure.builder.build(self.device)
+        self.model = Configurable.construct_class_from_config(
+            config).structure.builder.build(self.device)
 
     def initialize_model(self, model_config, weight_path):
         '''
@@ -192,7 +202,7 @@ class DBNet:
         '''
         self.construct_model(model_config)
         self.load_weight(weight_path)
-        
+
     def get_cv2_image(self, image):
         '''
         Load or convert input to OpenCV BGR image numpy array.
@@ -224,11 +234,12 @@ class DBNet:
         elif isinstance(image, PIL.Image.Image):
             image = np.asarray(image)[:, :, ::-1]
         else:
-            raise TypeError("Unsupport image format. Only path-to-file, opencv BGR image, and PIL image are supported.")
+            raise TypeError(
+                "Unsupport image format. Only path-to-file, opencv BGR image, and PIL image are supported.")
 
         return image
 
-    def resize_image(self, img, detection_size = None):
+    def resize_image(self, img, detection_size=None):
         '''
         Resize image such that the shorter side of the image is equal to the 
         closest multiple of 32 to the provided detection_size. If detection_size
@@ -252,8 +263,9 @@ class DBNet:
         '''
         height, width, _ = img.shape
         if detection_size is None:
-            detection_size = max(self.min_detection_size, min(height, width, self.max_detection_size))
-        
+            detection_size = max(self.min_detection_size, min(
+                height, width, self.max_detection_size))
+
         if height < width:
             new_height = int(math.ceil(detection_size / 32) * 32)
             new_width = int(math.ceil(new_height / height * width / 32) * 32)
@@ -294,9 +306,9 @@ class DBNet:
         np.ndarray
             OpenCV BGR image.
         '''
-        return (image - self.BGR_MEAN)/255.0    
-       
-    def load_image(self, image_path, detection_size = 0):
+        return (image - self.BGR_MEAN)/255.0
+
+    def load_image(self, image_path, detection_size=0):
         '''
         Wrapper to load and convert an image to an image tensor
 
@@ -314,18 +326,19 @@ class DBNet:
         original_shape : tuple
             A tuple (height, width) of the original input image before resizing.
         '''
-        img =self.get_cv2_image(image_path)
-        img, original_shape = self.resize_image(img, detection_size = detection_size)
+        img = self.get_cv2_image(image_path)
+        img, original_shape = self.resize_image(
+            img, detection_size=detection_size)
         img = self.normalize_image(img)
         img = self.image_array2tensor(img)
 
         return img, original_shape
-    
-    def load_images(self, images, detection_size = None):
+
+    def load_images(self, images, detection_size=None):
         '''
         Wrapper to load or convert list of multiple images to a single image 
         tensor. Multiple images are concatenated together on the first dimension.
-        
+
         Parameters
         ----------
         images : a list of path-to-file, PIL.Image, or np.ndarray
@@ -340,18 +353,18 @@ class DBNet:
         original_shape : tuple
             A list of tuples (height, width) of the original input image before resizing.
         '''
-        images, original_shapes = zip(*[self.load_image(image, detection_size = detection_size) 
+        images, original_shapes = zip(*[self.load_image(image, detection_size=detection_size)
                                         for image in images])
-        return torch.cat(images, dim = 0), original_shapes
-    
-    def hmap2bbox(self, 
-                  image_tensor, 
+        return torch.cat(images, dim=0), original_shapes
+
+    def hmap2bbox(self,
+                  image_tensor,
                   original_shapes,
-                  hmap, 
-                  text_threshold = 0.2, 
-                  bbox_min_score = 0.2, 
-                  bbox_min_size = 3, 
-                  max_candidates = 0, 
+                  hmap,
+                  text_threshold=0.2,
+                  bbox_min_score=0.2,
+                  bbox_min_size=3,
+                  max_candidates=0,
                   as_polygon=False):
         '''
         Translate probability heatmap tensor to text region boudning boxes.
@@ -390,41 +403,41 @@ class DBNet:
             Confidence scores of each text box.
 
         '''
-        segmentation = self.binarize(hmap, threshold = text_threshold)
+        segmentation = self.binarize(hmap, threshold=text_threshold)
         boxes_batch = []
         scores_batch = []
         for batch_index in range(image_tensor.size(0)):
             height, width = original_shapes[batch_index]
             if as_polygon:
                 boxes, scores = self.polygons_from_bitmap(
-                                        hmap[batch_index],
-                                        segmentation[batch_index], 
-                                        width, 
-                                        height, 
-                                        bbox_min_score = bbox_min_score, 
-                                        bbox_min_size = bbox_min_size, 
-                                        max_candidates = max_candidates)
+                    hmap[batch_index],
+                    segmentation[batch_index],
+                    width,
+                    height,
+                    bbox_min_score=bbox_min_score,
+                    bbox_min_size=bbox_min_size,
+                    max_candidates=max_candidates)
             else:
                 boxes, scores = self.boxes_from_bitmap(
-                                        hmap[batch_index],
-                                        segmentation[batch_index], 
-                                        width, 
-                                        height, 
-                                        bbox_min_score = bbox_min_score, 
-                                        bbox_min_size = bbox_min_size, 
-                                        max_candidates = max_candidates)
+                    hmap[batch_index],
+                    segmentation[batch_index],
+                    width,
+                    height,
+                    bbox_min_score=bbox_min_score,
+                    bbox_min_size=bbox_min_size,
+                    max_candidates=max_candidates)
 
             boxes_batch.append(boxes)
             scores_batch.append(scores)
-            
-        boxes_batch, scores_batch = zip(*[zip(*[(box, score) 
-                                                for (box,score) in zip(boxes, scores) if score > 0]
-                                             ) if any(scores > 0) else [(),()]
-                                         for (boxes, scores) in zip(boxes_batch, scores_batch)]
-                                       )
-            
+
+        boxes_batch, scores_batch = zip(*[zip(*[(box, score)
+                                                for (box, score) in zip(boxes, scores) if score > 0]
+                                              ) if any(scores > 0) else [(), ()]
+                                          for (boxes, scores) in zip(boxes_batch, scores_batch)]
+                                        )
+
         return boxes_batch, scores_batch
-    
+
     def binarize(self, tensor, threshold):
         '''
         Apply threshold to return boolean tensor.
@@ -443,15 +456,15 @@ class DBNet:
 
         '''
         return tensor > threshold
-    
-    def polygons_from_bitmap(self, 
+
+    def polygons_from_bitmap(self,
                              hmap,
                              segmentation,
-                             dest_width, 
-                             dest_height, 
-                             bbox_min_score = 0.2, 
-                             bbox_min_size = 3, 
-                             max_candidates = 0):
+                             dest_width,
+                             dest_height,
+                             bbox_min_score=0.2,
+                             bbox_min_size=3,
+                             max_candidates=0):
         '''
         Translate boolean tensor to fine polygon indicating text bounding boxes
 
@@ -475,7 +488,7 @@ class DBNet:
             Maximum number of detected bounding boxes to be considered as 
             candidates for valid text bounding box. Setting it to 0 implies
             no maximum. The default is 0.
-        
+
         Returns
         -------
         boxes_batch : list of lists
@@ -490,14 +503,14 @@ class DBNet:
         height, width = bitmap.shape
         boxes = []
         scores = []
-    
+
         contours, _ = cv2.findContours(
             (bitmap*255).astype(np.uint8),
             cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-        
+
         if max_candidates > 0:
             contours = contours[:max_candidates]
-        
+
         for contour in contours:
             epsilon = 0.002 * cv2.arcLength(contour, True)
             approx = cv2.approxPolyDP(contour, epsilon, True)
@@ -508,7 +521,7 @@ class DBNet:
             score = self.box_score_fast(hmap, points.reshape(-1, 2))
             if score < bbox_min_score:
                 continue
-            
+
             if points.shape[0] > 2:
                 box = self.unclip(points, unclip_ratio=2.0)
                 if len(box) > 1:
@@ -521,11 +534,11 @@ class DBNet:
             _, sside = self.get_mini_boxes(box.reshape((-1, 1, 2)))
             if sside < bbox_min_size + 2:
                 continue
-    
+
             if not isinstance(dest_width, int):
                 dest_width = dest_width.item()
                 dest_height = dest_height.item()
-            
+
             box[:, 0] = np.clip(
                 np.round(box[:, 0] / width * dest_width), 0, dest_width)
             box[:, 1] = np.clip(
@@ -534,15 +547,15 @@ class DBNet:
             scores.append(score)
 
         return boxes, scores
-    
-    def boxes_from_bitmap(self, 
+
+    def boxes_from_bitmap(self,
                           hmap,
                           segmentation,
-                          dest_width, 
-                          dest_height, 
-                          bbox_min_score = 0.2, 
-                          bbox_min_size = 3, 
-                          max_candidates = 0):
+                          dest_width,
+                          dest_height,
+                          bbox_min_score=0.2,
+                          bbox_min_size=3,
+                          max_candidates=0):
         '''
         Translate boolean tensor to fine polygon indicating text bounding boxes
 
@@ -566,21 +579,21 @@ class DBNet:
             Maximum number of detected bounding boxes to be considered as 
             candidates for valid text bounding box. Setting it to 0 implies
             no maximum. The default is 0.
-        
+
         Returns
         -------
         boxes_batch : list of lists
             Polygon bounding boxes of each text box.
         scores_batch : list of floats
             Confidence scores of each text box.
-        '''        
+        '''
         assert segmentation.size(0) == 1
         bitmap = segmentation.cpu().numpy()[0]  # The first channel
         hmap = hmap.cpu().detach().numpy()[0]
         height, width = bitmap.shape
         contours, _ = cv2.findContours(
-                            (bitmap*255).astype(np.uint8),
-                            cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+            (bitmap*255).astype(np.uint8),
+            cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         if max_candidates > 0:
             num_contours = min(len(contours), max_candidates)
         else:
@@ -588,7 +601,7 @@ class DBNet:
 
         boxes = np.zeros((num_contours, 4, 2), dtype=np.int16)
         scores = np.zeros((num_contours,), dtype=np.float32)
-    
+
         for index in range(num_contours):
             contour = contours[index]
             points, sside = self.get_mini_boxes(contour)
@@ -599,7 +612,7 @@ class DBNet:
             score = self.box_score_fast(hmap, points.reshape(-1, 2))
             if score < bbox_min_score:
                 continue
-        
+
             box = self.unclip(points).reshape(-1, 1, 2)
             box, sside = self.get_mini_boxes(box)
             if sside < bbox_min_size + 2:
@@ -609,7 +622,7 @@ class DBNet:
             if not isinstance(dest_width, int):
                 dest_width = dest_width.item()
                 dest_height = dest_height.item()
-            
+
             box[:, 0] = np.clip(
                 np.round(box[:, 0] / width * dest_width), 0, dest_width)
             box[:, 1] = np.clip(
@@ -618,7 +631,7 @@ class DBNet:
             scores[index] = score
 
         return boxes.tolist(), scores
-    
+
     def unclip(self, box, unclip_ratio=1.5):
         poly = Polygon(box)
         distance = poly.area * unclip_ratio / poly.length
@@ -627,11 +640,11 @@ class DBNet:
         expanded = np.array(offset.Execute(distance))
 
         return expanded
-    
+
     def get_mini_boxes(self, contour):
         bounding_box = cv2.minAreaRect(contour)
         points = sorted(list(cv2.boxPoints(bounding_box)), key=lambda x: x[0])
-    
+
         index_1, index_2, index_3, index_4 = 0, 1, 2, 3
         if points[1][1] > points[0][1]:
             index_1 = 0
@@ -645,12 +658,12 @@ class DBNet:
         else:
             index_2 = 3
             index_3 = 2
-    
+
         box = [points[index_1], points[index_2],
                points[index_3], points[index_4]]
 
         return box, min(bounding_box[1])
-    
+
     def box_score_fast(self, hmap, box_):
         '''
         Calculate total score of each bounding box
@@ -673,14 +686,14 @@ class DBNet:
         xmax = np.clip(np.ceil(box[:, 0].max()).astype(np.int), 0, w - 1)
         ymin = np.clip(np.floor(box[:, 1].min()).astype(np.int), 0, h - 1)
         ymax = np.clip(np.ceil(box[:, 1].max()).astype(np.int), 0, h - 1)
-    
+
         mask = np.zeros((ymax - ymin + 1, xmax - xmin + 1), dtype=np.uint8)
         box[:, 0] = box[:, 0] - xmin
         box[:, 1] = box[:, 1] - ymin
         cv2.fillPoly(mask, box.reshape(1, -1, 2).astype(np.int32), 1)
 
         return cv2.mean(hmap[ymin:ymax+1, xmin:xmax+1], mask)[0]
-    
+
     def image2hmap(self, image_tensor):
         '''
         Run the model to obtain a heatmap tensor from a image tensor. The heatmap
@@ -697,16 +710,16 @@ class DBNet:
             Probability heatmap tensor.
         '''
         return self.model.forward(image_tensor, training=False)
-        
-    def inference(self, 
+
+    def inference(self,
                   image,
-                  text_threshold = 0.2, 
-                  bbox_min_score = 0.2, 
-                  bbox_min_size = 3, 
-                  max_candidates = 0, 
-                  detection_size = None,
-                  as_polygon = False,
-                  return_scores = False):
+                  text_threshold=0.2,
+                  bbox_min_score=0.2,
+                  bbox_min_size=3,
+                  max_candidates=0,
+                  detection_size=None,
+                  as_polygon=False,
+                  return_scores=False):
         '''
         Wrapper to run the model on an input image to get text bounding boxes.
 
@@ -747,18 +760,19 @@ class DBNet:
         if not isinstance(image, list):
             image = [image]
 
-        image_tensor, original_shapes = self.load_images(image, detection_size = detection_size)
+        image_tensor, original_shapes = self.load_images(
+            image, detection_size=detection_size)
         with torch.no_grad():
             hmap = self.image2hmap(image_tensor)
-            batch_boxes, batch_scores = self.hmap2bbox(image_tensor, 
+            batch_boxes, batch_scores = self.hmap2bbox(image_tensor,
                                                        original_shapes,
-                                                       hmap, 
-                                                       text_threshold = text_threshold, 
-                                                       bbox_min_score = bbox_min_score, 
-                                                       bbox_min_size = bbox_min_size, 
-                                                       max_candidates = max_candidates, 
-                                                       as_polygon=as_polygon) 
-        
+                                                       hmap,
+                                                       text_threshold=text_threshold,
+                                                       bbox_min_score=bbox_min_score,
+                                                       bbox_min_size=bbox_min_size,
+                                                       max_candidates=max_candidates,
+                                                       as_polygon=as_polygon)
+
         if return_scores:
             return batch_boxes, batch_scores
         else:

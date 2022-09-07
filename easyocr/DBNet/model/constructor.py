@@ -1,6 +1,7 @@
 import importlib
 from collections import OrderedDict
 
+
 class State:
     def __init__(self, autoload=True, default=None):
         self.autoload = autoload
@@ -99,5 +100,3 @@ class Configurable(metaclass=StateMeta):
             return {key: self.dump_obj(value) for key, value in obj.items()}
         else:
             return str(obj)
-
-

@@ -116,15 +116,16 @@ class AdaptiveInstanceDiceLoss(nn.Module):
 
     def forward(self, pred, batch):
         main_loss = self.main_loss(pred['binary'], batch['gt'], batch['mask'])
-        thresh_loss = self.thresh_loss(pred['thresh_binary'], batch['gt'], batch['mask'])
+        thresh_loss = self.thresh_loss(
+            pred['thresh_binary'], batch['gt'], batch['mask'])
         main_instance_loss = self.main_instance_loss(
             pred['binary'], batch['gt'], batch['mask'])
         thresh_instance_loss = self.thresh_instance_loss(
             pred['thresh_binary'], batch['gt'], batch['mask'])
         loss = self.partial_loss(self.weights['main'], main_loss) \
-               + self.partial_loss(self.weights['thresh'], thresh_loss) \
-               + self.partial_loss(self.weights['main_instance'], main_instance_loss) \
-               + self.partial_loss(self.weights['thresh_instance'], thresh_instance_loss)
+            + self.partial_loss(self.weights['thresh'], thresh_loss) \
+            + self.partial_loss(self.weights['main_instance'], main_instance_loss) \
+            + self.partial_loss(self.weights['thresh_instance'], thresh_instance_loss)
         metrics = dict(
             main_loss=main_loss,
             thresh_loss=thresh_loss,
@@ -194,8 +195,10 @@ class L1BalanceCELoss(nn.Module):
         bce_loss = self.bce_loss(pred['binary'], batch['gt'], batch['mask'])
         metrics = dict(bce_loss=bce_loss)
         if 'thresh' in pred:
-            l1_loss, l1_metric = self.l1_loss(pred['thresh'], batch['thresh_map'], batch['thresh_mask'])
-            dice_loss = self.dice_loss(pred['thresh_binary'], batch['gt'], batch['mask'])
+            l1_loss, l1_metric = self.l1_loss(
+                pred['thresh'], batch['thresh_map'], batch['thresh_mask'])
+            dice_loss = self.dice_loss(
+                pred['thresh_binary'], batch['gt'], batch['mask'])
             metrics['thresh_loss'] = dice_loss
             loss = dice_loss + self.l1_scale * l1_loss + bce_loss * self.bce_scale
             metrics.update(**l1_metric)
@@ -225,7 +228,8 @@ class L1BCEMiningLoss(nn.Module):
     def forward(self, pred, batch):
         bce_loss, bce_map = self.bce_loss(pred['binary'], batch['gt'], batch['mask'],
                                           return_origin=True)
-        l1_loss, l1_metric = self.l1_loss(pred['thresh'], batch['thresh_map'], batch['thresh_mask'])
+        l1_loss, l1_metric = self.l1_loss(
+            pred['thresh'], batch['thresh_map'], batch['thresh_mask'])
         bce_map = (bce_map - bce_map.min()) / (bce_map.max() - bce_map.min())
         dice_loss = self.dice_loss(
             pred['thresh_binary'], batch['gt'],
@@ -255,8 +259,10 @@ class L1LeakyDiceLoss(nn.Module):
         self.l1_scale = l1_scale
 
     def forward(self, pred, batch):
-        main_loss, metrics = self.main_loss(pred['binary'], batch['gt'], batch['mask'])
-        thresh_loss = self.thresh_loss(pred['thresh_binary'], batch['gt'], batch['mask'])
+        main_loss, metrics = self.main_loss(
+            pred['binary'], batch['gt'], batch['mask'])
+        thresh_loss = self.thresh_loss(
+            pred['thresh_binary'], batch['gt'], batch['mask'])
         l1_loss, l1_metric = self.l1_loss(
             pred['thresh'], batch['thresh_map'], batch['thresh_mask'])
         metrics.update(**l1_metric, thresh_loss=thresh_loss)

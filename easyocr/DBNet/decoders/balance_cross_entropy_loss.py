@@ -37,11 +37,11 @@ class BalanceCrossEntropyLoss(nn.Module):
             gt: shape :math:`(N, 1, H, W)`, the target
             mask: shape :math:`(N, H, W)`, the mask indicates positive regions
         '''
-        positive = (gt[:,0,:,:] * mask).byte()
-        negative = ((1 - gt[:,0,:,:]) * mask).byte()
+        positive = (gt[:, 0, :, :] * mask).byte()
+        negative = ((1 - gt[:, 0, :, :]) * mask).byte()
         positive_count = int(positive.float().sum())
         negative_count = min(int(negative.float().sum()),
-                            int(positive_count * self.negative_ratio))
+                             int(positive_count * self.negative_ratio))
         loss = nn.functional.binary_cross_entropy(
             pred, gt, reduction='none')[:, 0, :, :]
         positive_loss = loss * positive.float()

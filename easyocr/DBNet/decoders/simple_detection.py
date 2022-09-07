@@ -18,12 +18,14 @@ class SimpleDetectionDecoder(nn.Module):
     def create_head_layer(self):
         return SimpleUpsampleHead(
             self.feature_channel,
-            [self.feature_channel, self.feature_channel // 2, self.feature_channel // 4]
+            [self.feature_channel, self.feature_channel //
+                2, self.feature_channel // 4]
         )
 
     def create_pred_layer(self, channels):
         return nn.Sequential(
-            nn.Conv2d(self.feature_channel // 4, channels, kernel_size=1, stride=1, padding=0, bias=False),
+            nn.Conv2d(self.feature_channel // 4, channels,
+                      kernel_size=1, stride=1, padding=0, bias=False),
         )
 
     def create_pred_layers(self):
@@ -68,7 +70,8 @@ class SimpleSegDecoder(SimpleDetectionDecoder):
 
         heatmap_pred = pred['heatmap']
 
-        heatmap_loss = F.binary_cross_entropy_with_logits(heatmap_pred, heatmap, reduction='none')
+        heatmap_loss = F.binary_cross_entropy_with_logits(
+            heatmap_pred, heatmap, reduction='none')
         heatmap_loss = (heatmap_loss * heatmap_weight).mean(dim=(1, 2, 3))
 
         return {
@@ -103,11 +106,13 @@ class SimpleEASTDecoder(SimpleDetectionDecoder):
         heatmap_pred = pred['heatmap']
         densebox_pred = pred['densebox']
 
-        heatmap_loss = F.binary_cross_entropy_with_logits(heatmap_pred, heatmap, reduction='none')
+        heatmap_loss = F.binary_cross_entropy_with_logits(
+            heatmap_pred, heatmap, reduction='none')
         heatmap_loss = (heatmap_loss * heatmap_weight).mean(dim=(1, 2, 3))
 
         densebox_loss = F.mse_loss(densebox_pred, densebox, reduction='none')
-        densebox_loss = (densebox_loss * densebox_weight).mean(dim=(1, 2, 3)) * self.densebox_ratio
+        densebox_loss = (
+            densebox_loss * densebox_weight).mean(dim=(1, 2, 3)) * self.densebox_ratio
 
         return {
             'heatmap_loss': heatmap_loss,
@@ -141,11 +146,13 @@ class SimpleTextsnakeDecoder(SimpleDetectionDecoder):
         heatmap_pred = pred['heatmap']
         radius_pred = pred['radius']
 
-        heatmap_loss = F.binary_cross_entropy_with_logits(heatmap_pred, heatmap, reduction='none')
+        heatmap_loss = F.binary_cross_entropy_with_logits(
+            heatmap_pred, heatmap, reduction='none')
         heatmap_loss = (heatmap_loss * heatmap_weight).mean(dim=(1, 2, 3))
 
         radius_loss = F.smooth_l1_loss(radius_pred, radius, reduction='none')
-        radius_loss = (radius_loss * radius_weight).mean(dim=(1, 2, 3)) * self.radius_ratio
+        radius_loss = (radius_loss * radius_weight).mean(dim=(1,
+                                                              2, 3)) * self.radius_ratio
 
         return {
             'heatmap_loss': heatmap_loss,
@@ -180,10 +187,12 @@ class SimpleMSRDecoder(SimpleDetectionDecoder):
         heatmap_pred = pred['heatmap']
         offset_pred = pred['offset']
 
-        heatmap_loss = F.binary_cross_entropy_with_logits(heatmap_pred, heatmap, reduction='none')
+        heatmap_loss = F.binary_cross_entropy_with_logits(
+            heatmap_pred, heatmap, reduction='none')
         heatmap_loss = (heatmap_loss * heatmap_weight).mean(dim=(1, 2, 3))
         offset_loss = F.mse_loss(offset_pred, offset, reduction='none')
-        offset_loss = (offset_loss * offset_weight).mean(dim=(1, 2, 3)) * self.offset_ratio
+        offset_loss = (offset_loss * offset_weight).mean(dim=(1,
+                                                              2, 3)) * self.offset_ratio
 
         return {
             'heatmap_loss': heatmap_loss,
