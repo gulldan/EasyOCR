@@ -5,6 +5,7 @@ import torchvision
 from torchvision import models
 from packaging import version
 
+
 def init_weights(modules):
     for m in modules:
         if isinstance(m, nn.Conv2d):
@@ -26,10 +27,12 @@ class vgg16_bn(torch.nn.Module):
             vgg_pretrained_features = models.vgg16_bn(
                 weights=models.VGG16_BN_Weights.DEFAULT if pretrained else None
             ).features
-        else: # torchvision.__version__ < 0.13
-            models.vgg.model_urls['vgg16_bn'] = models.vgg.model_urls['vgg16_bn'].replace('https://', 'http://')
-            vgg_pretrained_features = models.vgg16_bn(pretrained=pretrained).features
-        
+        else:  # torchvision.__version__ < 0.13
+            models.vgg.model_urls['vgg16_bn'] = models.vgg.model_urls['vgg16_bn'].replace(
+                'https://', 'http://')
+            vgg_pretrained_features = models.vgg16_bn(
+                pretrained=pretrained).features
+
         self.slice1 = torch.nn.Sequential()
         self.slice2 = torch.nn.Sequential()
         self.slice3 = torch.nn.Sequential()
@@ -46,9 +49,9 @@ class vgg16_bn(torch.nn.Module):
 
         # fc6, fc7 without atrous conv
         self.slice5 = torch.nn.Sequential(
-                nn.MaxPool2d(kernel_size=3, stride=1, padding=1),
-                nn.Conv2d(512, 1024, kernel_size=3, padding=6, dilation=6),
-                nn.Conv2d(1024, 1024, kernel_size=1)
+            nn.MaxPool2d(kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(512, 1024, kernel_size=3, padding=6, dilation=6),
+            nn.Conv2d(1024, 1024, kernel_size=1)
         )
 
         if not pretrained:
@@ -57,11 +60,12 @@ class vgg16_bn(torch.nn.Module):
             init_weights(self.slice3.modules())
             init_weights(self.slice4.modules())
 
-        init_weights(self.slice5.modules())        # no pretrained model for fc6 and fc7
+        # no pretrained model for fc6 and fc7
+        init_weights(self.slice5.modules())
 
         if freeze:
             for param in self.slice1.parameters():      # only first conv
-                param.requires_grad= False
+                param.requires_grad = False
 
     def forward(self, X):
         h = self.slice1(X)
