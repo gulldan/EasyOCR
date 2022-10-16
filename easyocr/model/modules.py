@@ -20,6 +20,7 @@ def init_weights(modules):
             m.weight.data.normal_(0, 0.01)
             m.bias.data.zero_()
 
+
 class vgg16_bn(torch.nn.Module):
     def __init__(self, pretrained=True, freeze=True):
         super(vgg16_bn, self).__init__()
@@ -27,9 +28,11 @@ class vgg16_bn(torch.nn.Module):
             vgg_pretrained_features = models.vgg16_bn(
                 weights=models.VGG16_BN_Weights.DEFAULT if pretrained else None
             ).features
-        else: #torchvision.__version__ < 0.13
-            models.vgg.model_urls['vgg16_bn'] = models.vgg.model_urls['vgg16_bn'].replace('https://', 'http://')
-            vgg_pretrained_features = models.vgg16_bn(pretrained=pretrained).features
+        else:  # torchvision.__version__ < 0.13
+            models.vgg.model_urls['vgg16_bn'] = models.vgg.model_urls['vgg16_bn'].replace(
+                'https://', 'http://')
+            vgg_pretrained_features = models.vgg16_bn(
+                pretrained=pretrained).features
 
         self.slice1 = torch.nn.Sequential()
         self.slice2 = torch.nn.Sequential()
@@ -47,9 +50,9 @@ class vgg16_bn(torch.nn.Module):
 
         # fc6, fc7 without atrous conv
         self.slice5 = torch.nn.Sequential(
-                nn.MaxPool2d(kernel_size=3, stride=1, padding=1),
-                nn.Conv2d(512, 1024, kernel_size=3, padding=6, dilation=6),
-                nn.Conv2d(1024, 1024, kernel_size=1)
+            nn.MaxPool2d(kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(512, 1024, kernel_size=3, padding=6, dilation=6),
+            nn.Conv2d(1024, 1024, kernel_size=1)
         )
 
         if not pretrained:
@@ -58,11 +61,12 @@ class vgg16_bn(torch.nn.Module):
             init_weights(self.slice3.modules())
             init_weights(self.slice4.modules())
 
-        init_weights(self.slice5.modules())        # no pretrained model for fc6 and fc7
+        # no pretrained model for fc6 and fc7
+        init_weights(self.slice5.modules())
 
         if freeze:
             for param in self.slice1.parameters():      # only first conv
-                param.requires_grad= False
+                param.requires_grad = False
 
     def forward(self, X):
         h = self.slice1(X)
@@ -75,15 +79,18 @@ class vgg16_bn(torch.nn.Module):
         h_relu5_3 = h
         h = self.slice5(h)
         h_fc7 = h
-        vgg_outputs = namedtuple("VggOutputs", ['fc7', 'relu5_3', 'relu4_3', 'relu3_2', 'relu2_2'])
+        vgg_outputs = namedtuple(
+            "VggOutputs", ['fc7', 'relu5_3', 'relu4_3', 'relu3_2', 'relu2_2'])
         out = vgg_outputs(h_fc7, h_relu5_3, h_relu4_3, h_relu3_2, h_relu2_2)
         return out
+
 
 class BidirectionalLSTM(nn.Module):
 
     def __init__(self, input_size, hidden_size, output_size):
         super(BidirectionalLSTM, self).__init__()
-        self.rnn = nn.LSTM(input_size, hidden_size, bidirectional=True, batch_first=True)
+        self.rnn = nn.LSTM(input_size, hidden_size,
+                           bidirectional=True, batch_first=True)
         self.linear = nn.Linear(hidden_size * 2, output_size)
 
     def forward(self, input):
@@ -91,13 +98,15 @@ class BidirectionalLSTM(nn.Module):
         input : visual feature [batch_size x T x input_size]
         output : contextual feature [batch_size x T x output_size]
         """
-        try: # multi gpu needs this
+        try:  # multi gpu needs this
             self.rnn.flatten_parameters()
-        except: # quantization doesn't work with this 
+        except:  # quantization doesn't work with this
             pass
-        recurrent, _ = self.rnn(input)  # batch_size x T x input_size -> batch_size x T x (2*hidden_size)
+        # batch_size x T x input_size -> batch_size x T x (2*hidden_size)
+        recurrent, _ = self.rnn(input)
         output = self.linear(recurrent)  # batch_size x T x output_size
         return output
+
 
 class VGG_FeatureExtractor(nn.Module):
 
@@ -106,16 +115,22 @@ class VGG_FeatureExtractor(nn.Module):
         self.output_channel = [int(output_channel / 8), int(output_channel / 4),
                                int(output_channel / 2), output_channel]
         self.ConvNet = nn.Sequential(
-            nn.Conv2d(input_channel, self.output_channel[0], 3, 1, 1), nn.ReLU(True),
+            nn.Conv2d(input_channel,
+                      self.output_channel[0], 3, 1, 1), nn.ReLU(True),
             nn.MaxPool2d(2, 2),
-            nn.Conv2d(self.output_channel[0], self.output_channel[1], 3, 1, 1), nn.ReLU(True),
+            nn.Conv2d(
+                self.output_channel[0], self.output_channel[1], 3, 1, 1), nn.ReLU(True),
             nn.MaxPool2d(2, 2),
-            nn.Conv2d(self.output_channel[1], self.output_channel[2], 3, 1, 1), nn.ReLU(True),
-            nn.Conv2d(self.output_channel[2], self.output_channel[2], 3, 1, 1), nn.ReLU(True),
+            nn.Conv2d(
+                self.output_channel[1], self.output_channel[2], 3, 1, 1), nn.ReLU(True),
+            nn.Conv2d(
+                self.output_channel[2], self.output_channel[2], 3, 1, 1), nn.ReLU(True),
             nn.MaxPool2d((2, 1), (2, 1)),
-            nn.Conv2d(self.output_channel[2], self.output_channel[3], 3, 1, 1, bias=False),
+            nn.Conv2d(
+                self.output_channel[2], self.output_channel[3], 3, 1, 1, bias=False),
             nn.BatchNorm2d(self.output_channel[3]), nn.ReLU(True),
-            nn.Conv2d(self.output_channel[3], self.output_channel[3], 3, 1, 1, bias=False),
+            nn.Conv2d(
+                self.output_channel[3], self.output_channel[3], 3, 1, 1, bias=False),
             nn.BatchNorm2d(self.output_channel[3]), nn.ReLU(True),
             nn.MaxPool2d((2, 1), (2, 1)),
             nn.Conv2d(self.output_channel[3], self.output_channel[3], 2, 1, 0), nn.ReLU(True))
@@ -123,15 +138,18 @@ class VGG_FeatureExtractor(nn.Module):
     def forward(self, input):
         return self.ConvNet(input)
 
+
 class ResNet_FeatureExtractor(nn.Module):
     """ FeatureExtractor of FAN (http://openaccess.thecvf.com/content_ICCV_2017/papers/Cheng_Focusing_Attention_Towards_ICCV_2017_paper.pdf) """
 
     def __init__(self, input_channel, output_channel=512):
         super(ResNet_FeatureExtractor, self).__init__()
-        self.ConvNet = ResNet(input_channel, output_channel, BasicBlock, [1, 2, 5, 3])
+        self.ConvNet = ResNet(input_channel, output_channel,
+                              BasicBlock, [1, 2, 5, 3])
 
     def forward(self, input):
         return self.ConvNet(input)
+
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -168,12 +186,14 @@ class BasicBlock(nn.Module):
 
         return out
 
+
 class ResNet(nn.Module):
 
     def __init__(self, input_channel, output_channel, block, layers):
         super(ResNet, self).__init__()
 
-        self.output_channel_block = [int(output_channel / 4), int(output_channel / 2), output_channel, output_channel]
+        self.output_channel_block = [
+            int(output_channel / 4), int(output_channel / 2), output_channel, output_channel]
 
         self.inplanes = int(output_channel / 8)
         self.conv0_1 = nn.Conv2d(input_channel, int(output_channel / 16),
@@ -185,24 +205,29 @@ class ResNet(nn.Module):
         self.relu = nn.ReLU(inplace=True)
 
         self.maxpool1 = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
-        self.layer1 = self._make_layer(block, self.output_channel_block[0], layers[0])
+        self.layer1 = self._make_layer(
+            block, self.output_channel_block[0], layers[0])
         self.conv1 = nn.Conv2d(self.output_channel_block[0], self.output_channel_block[
                                0], kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(self.output_channel_block[0])
 
         self.maxpool2 = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
-        self.layer2 = self._make_layer(block, self.output_channel_block[1], layers[1], stride=1)
+        self.layer2 = self._make_layer(
+            block, self.output_channel_block[1], layers[1], stride=1)
         self.conv2 = nn.Conv2d(self.output_channel_block[1], self.output_channel_block[
                                1], kernel_size=3, stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(self.output_channel_block[1])
 
-        self.maxpool3 = nn.MaxPool2d(kernel_size=2, stride=(2, 1), padding=(0, 1))
-        self.layer3 = self._make_layer(block, self.output_channel_block[2], layers[2], stride=1)
+        self.maxpool3 = nn.MaxPool2d(
+            kernel_size=2, stride=(2, 1), padding=(0, 1))
+        self.layer3 = self._make_layer(
+            block, self.output_channel_block[2], layers[2], stride=1)
         self.conv3 = nn.Conv2d(self.output_channel_block[2], self.output_channel_block[
                                2], kernel_size=3, stride=1, padding=1, bias=False)
         self.bn3 = nn.BatchNorm2d(self.output_channel_block[2])
 
-        self.layer4 = self._make_layer(block, self.output_channel_block[3], layers[3], stride=1)
+        self.layer4 = self._make_layer(
+            block, self.output_channel_block[3], layers[3], stride=1)
         self.conv4_1 = nn.Conv2d(self.output_channel_block[3], self.output_channel_block[
                                  3], kernel_size=2, stride=(2, 1), padding=(0, 1), bias=False)
         self.bn4_1 = nn.BatchNorm2d(self.output_channel_block[3])

@@ -12,15 +12,16 @@ import torch.backends.cudnn as cudnn
 
 from .DBNet.DBNet import DBNet
 
-def test_net(image, 
-             detector, 
-             threshold = 0.2, 
-             bbox_min_score = 0.2, 
-             bbox_min_size = 3, 
-             max_candidates = 0, 
-             canvas_size = None, 
-             poly = False, 
-             device = 'cpu'
+
+def test_net(image,
+             detector,
+             threshold=0.2,
+             bbox_min_score=0.2,
+             bbox_min_size=3,
+             max_candidates=0,
+             canvas_size=None,
+             poly=False,
+             device='cpu'
              ):
     '''
     A wrapper for DBNet inference routine.
@@ -69,40 +70,43 @@ def test_net(image,
         image_arrs = image
     else:                                                        # image is single numpy array
         image_arrs = [image]
-    
+
     # resize
-    images, original_shapes = zip(*[detector.resize_image(img, canvas_size) for img in image_arrs])
+    images, original_shapes = zip(
+        *[detector.resize_image(img, canvas_size) for img in image_arrs])
     # preprocessing
-    images = [np.transpose(detector.normalize_image(n_img), (2, 0, 1)) for n_img in images]
+    images = [np.transpose(detector.normalize_image(
+        n_img), (2, 0, 1)) for n_img in images]
     image_tensor = torch.from_numpy(np.array(images)).to(device)
     # forward pass
     with torch.no_grad():
         hmap = detector.image2hmap(image_tensor.to(device))
         bboxes, _ = detector.hmap2bbox(
-                            image_tensor, 
-                            original_shapes,
-                            hmap, 
-                            text_threshold = threshold, 
-                            bbox_min_score = bbox_min_score, 
-                            bbox_min_size = bbox_min_size, 
-                            max_candidates = max_candidates, 
-                            as_polygon=False)
+            image_tensor,
+            original_shapes,
+            hmap,
+            text_threshold=threshold,
+            bbox_min_score=bbox_min_score,
+            bbox_min_size=bbox_min_size,
+            max_candidates=max_candidates,
+            as_polygon=False)
         if poly:
             polys, _ = detector.hmap2bbox(
-                                image_tensor, 
-                                original_shapes,
-                                hmap, 
-                                text_threshold = threshold, 
-                                bbox_min_score = bbox_min_score, 
-                                bbox_min_size = bbox_min_size, 
-                                max_candidates = max_candidates, 
-                                as_polygon=True)
+                image_tensor,
+                original_shapes,
+                hmap,
+                text_threshold=threshold,
+                bbox_min_score=bbox_min_score,
+                bbox_min_size=bbox_min_size,
+                max_candidates=max_candidates,
+                as_polygon=True)
         else:
             polys = bboxes
 
     return bboxes, polys
 
-def get_detector(trained_model, backbone = 'resnet18', device='cpu', quantize=True, cudnn_benchmark=False):
+
+def get_detector(trained_model, backbone='resnet18', device='cpu', quantize=True, cudnn_benchmark=False):
     '''
     A wrapper to initialize DBNet text detection model
 
@@ -124,37 +128,41 @@ def get_detector(trained_model, backbone = 'resnet18', device='cpu', quantize=Tr
     dbnet : obj
         DBNet text detection object.
     '''
-    dbnet = DBNet(initialize_model = False, 
-                  dynamic_import_relative_path = os.path.join("easyocr", "DBNet"),
-                  device = device, 
-                  verbose = 0)
+    dbnet = DBNet(initialize_model=False,
+                  dynamic_import_relative_path=os.path.join(
+                      "easyocr", "DBNet"),
+                  device=device,
+                  verbose=0)
     if backbone not in ['resnet18', 'resnet50']:
-        raise ValueError("Invalid backbone. Options are 'resnet18' or 'resnet50'.")
+        raise ValueError(
+            "Invalid backbone. Options are 'resnet18' or 'resnet50'.")
     dbnet.initialize_model(dbnet.configs[backbone]['model'],
                            trained_model)
     if torch.device(device).type == 'cpu':
         if quantize:
             try:
-                torch.quantization.quantize_dynamic(dbnet, dtype=torch.qint8, inplace=True)
+                torch.quantization.quantize_dynamic(
+                    dbnet, dtype=torch.qint8, inplace=True)
             except:
                 pass
     else:
         dbnet.model = torch.nn.DataParallel(dbnet.model).to(device)
         cudnn.benchmark = cudnn_benchmark
-    
+
     dbnet.model.eval()
 
     return dbnet
 
-def get_textbox(detector, 
+
+def get_textbox(detector,
                 image,
-                canvas_size = None, 
-                poly = False, 
-                threshold = 0.2, 
-                bbox_min_score = 0.2, 
-                bbox_min_size = 3, 
-                max_candidates = 0,
-                device = 'cpu',
+                canvas_size=None,
+                poly=False,
+                threshold=0.2,
+                bbox_min_score=0.2,
+                bbox_min_size=3,
+                max_candidates=0,
+                device='cpu',
                 **kwargs
                 ):
     '''
@@ -202,19 +210,20 @@ def get_textbox(detector,
             "DBNet detector is initialized with {} device, but detection routine",
             "is called with device = {}.",
             "To use this detector both have to be the same."
-            ]).format(detector.device, device))
+        ]).format(detector.device, device))
 
-    _, polys_list = test_net(image, 
-                             detector, 
-                             threshold = threshold, 
-                             bbox_min_score = bbox_min_score, 
-                             bbox_min_size = bbox_min_size, 
-                             max_candidates =max_candidates, 
-                             canvas_size = canvas_size, 
-                             poly = poly, 
-                             device = device
+    _, polys_list = test_net(image,
+                             detector,
+                             threshold=threshold,
+                             bbox_min_score=bbox_min_score,
+                             bbox_min_size=bbox_min_size,
+                             max_candidates=max_candidates,
+                             canvas_size=canvas_size,
+                             poly=poly,
+                             device=device
                              )
-                
-    result = [[np.array(box).astype(np.int32).reshape((-1)) for box in polys] for polys in polys_list]
+
+    result = [[np.array(box).astype(np.int32).reshape((-1))
+               for box in polys] for polys in polys_list]
 
     return result

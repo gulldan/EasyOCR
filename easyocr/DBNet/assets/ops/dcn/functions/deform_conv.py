@@ -12,30 +12,34 @@ from torch.autograd import Function
 from torch.nn.modules.utils import _pair
 from torch.utils import cpp_extension
 
-# TODO - Jaided AI: 
+# TODO - Jaided AI:
 # 1. Find a better way to handle and support both Ahead-of-Time (AoT) and Just-in-Time (JiT) compilation.
 # 2. Find a better way to report error to help pinpointing issues if there is any.
 # Note on JiT and AoT compilation:
 # This module supports both AoT and JiT compilation approaches. JiT is hardcoded as the default. If AoT compiled objects are present, it will supercede JiT compilation.
- 
+
+
 def custom_formatwarning(msg, *args, **kwargs):
     # ignore everything except the message
     return str(msg) + '\n'
+
 
 warnings.formatwarning = custom_formatwarning
 dcn_dir = os.path.dirname(os.path.dirname(__file__))
 try:
     from .. import deform_conv_cpu
-    warnings.warn("Using precompiled deform_conv_cpu from {}".format(deform_conv_cpu.__file__))
+    warnings.warn("Using precompiled deform_conv_cpu from {}".format(
+        deform_conv_cpu.__file__))
     dcn_cpu_ready = True
 except:
     try:
         warnings.warn("Compiling deform_conv_cpu ...")
-        warnings.warn("(This may take a while if this module is loaded for the first time.)")
+        warnings.warn(
+            "(This may take a while if this module is loaded for the first time.)")
         deform_conv_cpu = cpp_extension.load(
-                            name="deform_conv_cpu", 
-                            sources=[os.path.join(dcn_dir, 'src', "deform_conv_cpu.cpp"),
-                                     os.path.join(dcn_dir, 'src', "deform_conv_cpu_kernel.cpp")])
+            name="deform_conv_cpu",
+            sources=[os.path.join(dcn_dir, 'src', "deform_conv_cpu.cpp"),
+                     os.path.join(dcn_dir, 'src', "deform_conv_cpu_kernel.cpp")])
         warnings.warn("Done.")
         dcn_cpu_ready = True
     except Exception as error:
@@ -43,26 +47,28 @@ except:
             "Failed to import and/or compile 'deform_conv_cpu' with the following error",
             "{}".format(error),
             "Deformable convulution and DBNet will not be able to run on CPU."
-            ]))
+        ]))
         dcn_cpu_ready = False
 
 if torch.cuda.is_available():
     try:
         from .. import deform_conv_cuda
-        warnings.warn("Using precompiled deform_conv_cuda from {}".format(deform_conv_cuda.__file__))
+        warnings.warn("Using precompiled deform_conv_cuda from {}".format(
+            deform_conv_cuda.__file__))
         dcn_cuda_ready = True
     except:
         try:
             warnings.warn("Compiling deform_conv_cuda ...")
-            warnings.warn("(This may take a while if this module is loaded for the first time.)")
-            cuda_sources = [os.path.join(dcn_dir, 'src', src_file) 
-                           for src_file in ["deform_conv_cuda.cpp",
-                                            "deform_conv_cuda_kernel.cu"]
-                           ]
+            warnings.warn(
+                "(This may take a while if this module is loaded for the first time.)")
+            cuda_sources = [os.path.join(dcn_dir, 'src', src_file)
+                            for src_file in ["deform_conv_cuda.cpp",
+                                             "deform_conv_cuda_kernel.cu"]
+                            ]
             deform_conv_cuda = cpp_extension.load(
-                                name="deform_conv_cuda", 
-                                sources=[os.path.join(dcn_dir, 'src', "deform_conv_cuda.cpp"),
-                                         os.path.join(dcn_dir, 'src', "deform_conv_cuda_kernel.cu")])
+                name="deform_conv_cuda",
+                sources=[os.path.join(dcn_dir, 'src', "deform_conv_cuda.cpp"),
+                         os.path.join(dcn_dir, 'src', "deform_conv_cuda_kernel.cu")])
             warnings.warn("Done.")
             dcn_cuda_ready = True
         except Exception as error:
@@ -70,11 +76,12 @@ if torch.cuda.is_available():
                 "Failed to import or compile 'deform_conv_cuda' with the following error",
                 "{}".format(error),
                 "Deformable convulution and DBNet will not be able to run on GPU."
-                ]))
+            ]))
             dcn_cuda_ready = False
 
+
 class DeformConvFunction(Function):
-    
+
     @staticmethod
     def forward(ctx,
                 input,
@@ -125,9 +132,10 @@ class DeformConvFunction(Function):
         else:
             device_ = input.device.type
             raise RuntimeError(
-                "Input type is {}, but 'deform_conv_{}.*.so' is not imported successfully.".format(device_, device_),
-                )
-             
+                "Input type is {}, but 'deform_conv_{}.*.so' is not imported successfully.".format(
+                    device_, device_),
+            )
+
         return output
 
     @staticmethod
@@ -137,7 +145,8 @@ class DeformConvFunction(Function):
         grad_input = grad_offset = grad_weight = None
 
         if not grad_output.is_cuda:
-            raise NotImplementedError("DCN operator for cpu for backward propagation is not implemented.")
+            raise NotImplementedError(
+                "DCN operator for cpu for backward propagation is not implemented.")
         else:
             cur_im2col_step = min(ctx.im2col_step, input.shape[0])
             assert (input.shape[0] %
@@ -206,7 +215,7 @@ class ModulatedDeformConvFunction(Function):
         ctx.with_bias = bias is not None
         if not ctx.with_bias:
             bias = input.new_empty(1)  # fake tensor
-        
+
         if weight.requires_grad or mask.requires_grad or offset.requires_grad \
                 or input.requires_grad:
             ctx.save_for_backward(input, offset, mask, weight, bias)
@@ -228,14 +237,16 @@ class ModulatedDeformConvFunction(Function):
         else:
             device_ = input.device.type
             raise RuntimeError(
-                "Input type is {}, but 'deform_conv_{}.*.so' is not imported successfully.".format(device_, device_),
-                )
+                "Input type is {}, but 'deform_conv_{}.*.so' is not imported successfully.".format(
+                    device_, device_),
+            )
         return output
 
     @staticmethod
     def backward(ctx, grad_output):
         if not grad_output.is_cuda:
-            raise NotImplementedError("DCN operator for CPU for backward propagation is not implemented.")
+            raise NotImplementedError(
+                "DCN operator for CPU for backward propagation is not implemented.")
         input, offset, mask, weight, bias = ctx.saved_tensors
         grad_input = torch.zeros_like(input)
         grad_offset = torch.zeros_like(offset)
